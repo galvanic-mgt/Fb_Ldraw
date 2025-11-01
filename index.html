@@ -1,108 +1,28 @@
-<!DOCTYPE html>
-<html lang="zh-HK">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Lucky Draw · CMS (Firebase-only)</title>
-  <link rel="stylesheet" href="./styles.css" />
-  <link rel="icon" href="data:,">
-  <style>.chip{display:inline-block;padding:4px 8px;border:1px solid #fff33a33;border-radius:999px;margin:2px}</style>
-</head>
-<body>
-  <div id="loginGate" class="overlay" style="display:none">
-    <form id="loginForm" class="card" style="min-width:320px; background:#121a2b; padding:16px">
-      <h3 style="margin-top:0">登入</h3>
-      <label>帳號 <input id="loginUser" placeholder="admin" /></label>
-      <label>密碼 <input id="loginPass" type="password" placeholder="admin" /></label>
-      <div class="bar" style="margin-top:12px">
-        <button id="btnLogin" class="btn primary" type="submit">登入</button>
-      </div>
-    </form>
-  </div>
-
-  <header>
-    <div class="container row">
-      <div class="tabs"><button class="btn primary active" type="button">後台 CMS</button></div>
-      <div class="bar" style="margin-left:auto">
-        <a class="btn" href="./public.html" target="_blank" role="button">Public Board ↗</a>
-        <a class="btn" href="./tablet.html" target="_blank" role="button">Tablet View ↗</a>
-        <a class="btn primary" href="./landing.html" target="_blank" role="button">Landing ↗</a>
-      </div>
-    </div>
-  </header>
-
-  <main class="container" id="cmsView">
-    <div class="cms-grid">
-      <aside class="sidebar">
-        <div class="sidebar-title">活動清單</div>
-        <div id="eventList" class="event-list"></div>
-        <hr style="border-color:rgba(255,255,255,.12)">
-        <div class="sidebar-title">功能頁面</div>
-        <nav id="cmsNav" class="nav-list">
-          <button class="nav-item active" data-target="pageEvent">活動資料</button>
-          <button class="nav-item" data-target="pageRoster">名單</button>
-          <button class="nav-item" data-target="pagePrizes">獎品 / 抽獎</button>
-          <button class="nav-item" data-target="pagePoll">投票</button>
-        </nav>
-      </aside>
-
-      <section class="cms-main">
-        <section class="card subpage" id="pageEvent">
-          <h3>活動資料</h3>
-          <div class="grid-2">
-            <label>活動名稱 <input id="evTitle" /></label>
-            <label>客戶名稱 <input id="evClient" /></label>
-            <label>日期時間 <input id="evDateTime" /></label>
-            <label>地點名稱 <input id="evVenue" /></label>
-            <label>地址 <input id="evAddress" /></label>
-            <label>Google 地圖連結 <input id="evMapUrl" /></label>
-            <label>巴士 <textarea id="evBus" rows="3"></textarea></label>
-            <label>地鐵/火車 <textarea id="evTrain" rows="3"></textarea></label>
-            <label>泊車 <textarea id="evParking" rows="3"></textarea></label>
-            <label>備註 <textarea id="evNotes" rows="3"></textarea></label>
-            <button id="saveEventInfo" class="btn primary" type="button">💾 儲存</button>
-          </div>
-        </section>
-
-        <section class="card subpage" id="pageRoster" style="display:none">
-          <h3>名單 / 匯入</h3>
-          <input type="file" id="csvFile" accept=".csv" />
-          <div class="bar" style="margin-top:8px">
-            <button id="btnImportCSV" class="btn">匯入 CSV</button>
-            <button id="btnExportCSV" class="btn">匯出 CSV</button>
-          </div>
-          <div id="guestList" style="margin-top:10px"></div>
-        </section>
-
-        <section class="card subpage" id="pagePrizes" style="display:none">
-          <h3>獎品 / 抽獎</h3>
-          <div class="bar" style="margin-bottom:8px">
-            <input id="newPrizeName" placeholder="獎品名稱" />
-            <label>名額 <input type="number" id="newPrizeQuota" value="1" min="1" /></label>
-            <button id="addPrize" class="btn" type="button">+ 新增</button>
-          </div>
-          <table>
-            <thead><tr><th>使用中</th><th>獎品名稱</th><th>名額</th><th>已得獎</th></tr></thead>
-            <tbody id="prizeRows"></tbody>
-          </table>
-          <div class="bar">
-            <label>批量 <input id="batchCount" type="number" value="1" min="1" /></label>
-            <button id="drawBatch" class="btn">抽出</button>
-          </div>
-        </section>
-
-        <section class="card subpage" id="pagePoll" style="display:none">
-          <h3>投票</h3>
-          <p>（使用 vote.html?event=&poll= ）</p>
-        </section>
-      </section>
-    </div>
-  </main>
-
-  <script src="./qrcode.min.js"></script>
-  <script type="module">
-    import { bootCMS } from './src/ui_cms_firebase.js';
-    document.addEventListener('DOMContentLoaded', bootCMS);
-  </script>
-</body>
-</html>
+<!DOCTYPE html><html lang="zh-HK"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Lucky Draw · CMS (Firebase)</title><link rel="stylesheet" href="./styles.css"/><link rel="icon" href="data:,"><style>.chip{display:inline-block;padding:4px 8px;border:1px solid #fff33a33;border-radius:999px;margin:2px}.row{padding:6px 0;border-bottom:1px dashed #ffffff22}.photo{display:inline-block;margin:6px}</style></head><body>
+<div id="loginGate" class="overlay" style="display:none"><form id="loginForm" class="card" style="min-width:320px; background:#121a2b; padding:16px"><h3 style="margin-top:0">登入</h3><label>帳號 <input id="loginUser" placeholder="admin"/></label><label>密碼 <input id="loginPass" type="password" placeholder="admin"/></label><div class="bar" style="margin-top:12px"><button class="btn primary" type="submit">進入</button></div></form></div>
+<header><div class="container row"><div class="tabs"><button class="btn primary active" type="button">後台 CMS</button></div><div class="bar" style="margin-left:auto"><a class="btn" href="./public.html" target="_blank" role="button">Public Board ↗</a><a class="btn" href="./tablet.html" target="_blank" role="button">Tablet View ↗</a><a class="btn primary" href="./landing.html" target="_blank" role="button">Landing ↗</a></div></div></header>
+<main class="container" id="cmsView"><div class="cms-grid">
+<aside class="sidebar"><div class="sidebar-title">活動清單</div><div id="eventList" class="event-list"></div><hr style="border-color:rgba(255,255,255,.12)"><div class="sidebar-title">功能頁面</div>
+<nav id="cmsNav" class="nav-list">
+<button class="nav-item active" data-target="pageEvent">活動資料</button>
+<button class="nav-item" data-target="pageRoster">名單</button>
+<button class="nav-item" data-target="pagePrizes">獎品 / 抽獎</button>
+<button class="nav-item" data-target="pageQuestions">抽問</button>
+<button class="nav-item" data-target="pagePoll">投票</button>
+<button class="nav-item" data-target="pageStorage">素材/檔案</button>
+<button class="nav-item" data-target="pageEventsManage">活動管理</button>
+<button class="nav-item" data-target="pageUsers">使用者</button>
+</nav></aside>
+<section class="cms-main">
+<section class="card subpage" id="pageEvent"><h3>活動資料</h3><div class="grid-2">
+<label>活動名稱 <input id="metaName"/></label><label>客戶名稱 <input id="metaClient"/></label><label>是否公開 <input id="metaListed" type="checkbox" checked/></label><label>顯示標題 <input id="evTitle"/></label><label>日期時間 <input id="evDateTime"/></label><label>地點名稱 <input id="evVenue"/></label><label>地址 <input id="evAddress"/></label><label>Google 地圖連結 <input id="evMapUrl"/></label><label>巴士 <textarea id="evBus" rows="3"></textarea></label><label>地鐵/火車 <textarea id="evTrain" rows="3"></textarea></label><label>泊車 <textarea id="evParking" rows="3"></textarea></label><label>備註 <textarea id="evNotes" rows="3"></textarea></label><button id="saveEventInfo" class="btn primary" type="button">💾 儲存</button></div></section>
+<section class="card subpage" id="pageRoster" style="display:none"><h3>名單 / 匯入</h3><div class="bar"><input placeholder="搜尋姓名/部門" id="searchGuest"/><span id="rosterCount"></span></div><input type="file" id="csvFile" accept=".csv"/><div class="bar" style="margin-top:8px"><button id="btnImportCSV" class="btn">匯入 CSV</button><button id="btnExportCSV" class="btn">匯出 CSV</button></div><div id="guestList" style="margin-top:10px"></div></section>
+<section class="card subpage" id="pagePrizes" style="display:none"><h3>獎品 / 抽獎</h3><div class="bar" style="margin-bottom:8px"><input id="newPrizeName" placeholder="獎品名稱"/><label>名額 <input type="number" id="newPrizeQuota" value="1" min="1"/></label><button id="addPrize" class="btn" type="button">+ 新增</button></div><table><thead><tr><th>使用中</th><th>獎品名稱</th><th>名額</th><th>已得獎</th></tr></thead><tbody id="prizeRows"></tbody></table><div class="bar"><label>批量 <input id="batchCount" type="number" value="1" min="1"/></label><button id="drawBatch" class="btn">抽出</button></div><h4>得獎名單</h4><ul id="winnersList"></ul></section>
+<section class="card subpage" id="pageQuestions" style="display:none"><h3>抽問</h3><div class="bar"><input id="newQuestion" placeholder="新增問題…"/><button id="btnAddQuestion" class="btn">+ 新增</button></div><ol id="questionList"></ol></section>
+<section class="card subpage" id="pagePoll" style="display:none"><h3>投票</h3><div class="grid-2"><label>題目 <input id="newPollQ" placeholder="例：今晚加菜？"/></label><label>選項（以逗號或換行分隔）<textarea id="newPollOpts" rows="4" placeholder="牛…\n雞…"></textarea></label><button id="btnAddPoll" class="btn">發佈投票</button></div><h4>已發佈</h4><ul id="pollList"></ul></section>
+<section class="card subpage" id="pageStorage" style="display:none"><h3>素材/檔案（URL）</h3><label>Banner URL <input id="bannerUrl"/></label><label>Logo URL <input id="logoUrl"/></label><div class="bar"><button id="saveAssets" class="btn">儲存</button> <button id="addPhoto" class="btn">+ 相片 URL</button></div><div id="photosGrid"></div></section>
+<section class="card subpage" id="pageEventsManage" style="display:none"><h3>活動管理</h3><p>在左側「活動清單」可新增活動、切換活動。</p></section>
+<section class="card subpage" id="pageUsers" style="display:none"><h3>使用者</h3><p>現階段使用本機覆蓋登入畫面（無 Firebase Auth）。</p></section>
+</section></div></main>
+<script src="./qrcode.min.js"></script><script type="module">import { bootCMS } from './src/ui_cms_firebase.js'; import { bindLoginOverlay } from './src/admin_overlay.js'; document.addEventListener('DOMContentLoaded', ()=>{ bindLoginOverlay(); bootCMS(); });</script>
+</body></html>

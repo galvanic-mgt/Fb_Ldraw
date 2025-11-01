@@ -1,31 +1,24 @@
-<!-- vote.html -->
-<!DOCTYPE html>
-<html lang="zh-HK">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>投票頁（手機）</title>
-  <link rel="stylesheet" href="./landing.css" />
-</head>
-<body>
-  <main class="lp-wrap">
-    <section class="lp-card lp-hero" style="text-align:center">
-      <h1 id="pollTitle">投票</h1>
-      <p class="lp-muted" id="pollSubtitle">請選擇一項提交</p>
-    </section>
-
-    <section class="lp-card" id="pollCard">
-      <div id="pollOptionsWrap" class="lp-poll-options"></div>
-      <button id="submitVote" class="lp-primary" type="button" disabled>提交投票</button>
-      <p id="voteMsg" class="lp-msg"></p>
-    </section>
-
-    <section class="lp-card lp-hero" style="display:none" id="thanksCard">
-      <h3>✅ 已提交，感謝你的參與！</h3>
-      <p class="lp-muted">請留意舞台大屏幕上的結果。</p>
-    </section>
-  </main>
-
-  <script src="./vote.js"></script>
-</body>
-</html>
+<!doctype html><html lang="zh-HK"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Vote</title><link rel="stylesheet" href="./styles.css"><style>.opt{padding:12px;border:1px solid #ffffff33;border-radius:12px;margin:8px 0;cursor:pointer}</style></head>
+<body><main class="container"><h2 id="pollQ">Loading…</h2><div id="opts"></div><p id="thanks" style="display:none">已投票，謝謝！</p></main>
+<script type="module">
+  import { FB } from './src/fb.js';
+  const u=new URL(location.href); const event=u.searchParams.get('event'); const poll=u.searchParams.get('poll');
+  const qEl=document.getElementById('pollQ'); const box=document.getElementById('opts'); const thanks=document.getElementById('thanks');
+  async function boot(){
+    if(!event||!poll){ qEl.textContent='缺少參數 event/poll'; return; }
+    const data = await FB.get(`/events/${event}/polls/${poll}`);
+    if(!data){ qEl.textContent='找不到投票'; return; }
+    qEl.textContent=data.question||'投票';
+    (data.options||[]).forEach(o=>{
+      const div=document.createElement('div'); div.className='opt'; div.textContent=o.text||o.id;
+      div.onclick=async ()=>{
+        const cur = await FB.get(`/events/${event}/polls/${poll}/votes/${o.id}`);
+        const next = (typeof cur==='number'?cur:0)+1;
+        await FB.put(`/events/${event}/polls/${poll}/votes/${o.id}`, next);
+        box.style.display='none'; thanks.style.display='block';
+      };
+      box.appendChild(div);
+    });
+  }
+  boot();
+</script></body></html>

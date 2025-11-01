@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lucky Draw · CMS & Stage (Firebase Modular)</title>
+  <link rel="stylesheet" href="./styles.css" />
+  <link rel="icon" href="data:,">
+</head>
+<body>
+  <!-- LOGIN OVERLAY (local-only) -->
+  <div id="loginGate" class="overlay" style="display:none">
+    <form id="loginForm" class="card" style="min-width:320px; background:#121a2b; padding:16px">
+      <h3 style="margin-top:0">登入</h3>
+      <label style="display:block; margin:8px 0">
+        帳號 <input id="loginUser" placeholder="admin" />
+      </label>
+      <label style="display:block; margin:8px 0">
+        密碼 <input id="loginPass" type="password" placeholder="admin" />
+      </label>
+      <div class="bar" style="margin-top:12px">
+        <button id="btnLogin" class="btn primary" type="submit">登入</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Keep your original body structure (sidebar + subpages) by reusing index.html from your project. -->
+  <!-- To keep this sample concise, please reuse your existing index.html markup.
+       This modular build wires up the same IDs and buttons with ES modules. -->
+
+  <!-- Minimal CMS shell to validate wiring -->
+  <header>
+    <div class="container row">
+      <div class="tabs">
+        <button class="btn primary active" type="button">後台 CMS</button>
+      </div>
+      <div class="bar" style="margin-left:auto">
+        <a class="btn primary" href="./landing.html" target="_blank" role="button">手機報名頁 ↗</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="container" id="cmsView">
+    <div class="cms-grid">
+      <aside class="sidebar">
+        <div class="sidebar-title">活動清單</div>
+        <div id="eventList" class="event-list"></div>
+        <div class="sidebar-form">
+          <input id="newEventName" placeholder="新增活動名稱" />
+          <input id="newClientName" placeholder="客戶名稱 (可選)" />
+          <button id="addEvent" class="btn primary" type="button">+ 新活動</button>
+        </div>
+        <hr style="border-color:rgba(255,255,255,.12)">
+        <div class="sidebar-title">功能頁面</div>
+        <nav id="cmsNav" class="nav-list">
+          <button class="nav-item active" data-target="pageEvent">活動資料</button>
+          <button class="nav-item" data-target="pagePrizes">獎品</button>
+          <button class="nav-item" data-target="pageStage">抽獎舞台</button>
+          <button class="nav-item" data-target="pagePoll">投票</button>
+        </nav>
+      </aside>
+
+      <section class="cms-main">
+        <section class="card subpage" id="pageEvent">
+          <h3>活動資料</h3>
+          <div class="grid-2">
+            <label>活動名稱 <input id="evTitle" /></label>
+            <label>客戶名稱 <input id="evClient" /></label>
+            <label>日期時間 <input id="evDateTime" placeholder="2025-09-01 18:30–22:00" /></label>
+            <label>地點名稱 <input id="evVenue" placeholder="會展 Hall 3" /></label>
+            <label>地址 <input id="evAddress" placeholder="灣仔港灣道 1 號" /></label>
+            <label>Google 地圖連結 <input id="evMapUrl" placeholder="https://maps..." /></label>
+            <label>巴士 <textarea id="evBus" rows="3"></textarea></label>
+            <label>地鐵/火車 <textarea id="evTrain" rows="3"></textarea></label>
+            <label>泊車 <textarea id="evParking" rows="3"></textarea></label>
+            <label>備註 <textarea id="evNotes" rows="3"></textarea></label>
+            <button id="saveEventInfo" class="btn primary" type="button">💾 儲存活動資訊</button>
+          </div>
+        </section>
+
+        <section class="card subpage" id="pagePrizes" style="display:none">
+          <h3>獎品</h3>
+          <div class="bar" style="margin-bottom:8px">
+            <input id="newPrizeName" placeholder="獎品名稱（例如：頭獎 iPad）" />
+            <label>名額 <input type="number" id="newPrizeQuota" value="1" min="1" /></label>
+            <button id="addPrize" class="btn" type="button">+ 新增獎品</button>
+          </div>
+          <table>
+            <thead><tr><th>使用中</th><th>獎品名稱</th><th>名額</th><th>已中獎</th><th>操作</th></tr></thead>
+            <tbody id="prizeRows"></tbody>
+          </table>
+        </section>
+
+        <section class="card subpage" id="pageStage" style="display:none">
+          <div class="bar" style="margin-bottom:8px">
+            <label>目前抽取批量 <input type="number" id="batchCount" value="1" min="1" /></label>
+            <button id="draw" class="btn" type="button">🎲 即抽</button>
+          </div>
+          <section class="card stage">
+            <div class="stage-inner">
+              <div class="row prize-header">
+                <div class="prize-title" id="publicPrize2">—</div>
+                <span class="stat" id="prizeLeftInline2">此獎尚餘：0</span>
+              </div>
+              <div id="currentBatch2" class="batch-grid"></div>
+              <div class="winners-list" id="winnersChips2"></div>
+              <div class="bar" style="justify-content:center;margin-top:12px">
+                <span class="stat" id="statsRemain2">剩餘：0</span>
+                <span class="stat" id="statsWinners2">已得獎：0</span>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <section class="card subpage" id="pagePoll" style="display:none">
+          <h3>投票</h3>
+          <div class="grid-2">
+            <div class="card" style="padding:12px">
+              <h4 style="margin-top:0">投票列表</h4>
+              <div id="pollList"></div>
+              <div class="bar" style="margin-top:8px">
+                <button id="addPoll" class="btn" type="button">+ 新增投票</button>
+                <button id="publishPollNow" class="btn" type="button">⬆︎ 立即發佈到雲端</button>
+              </div>
+            </div>
+            <div class="card" style="padding:12px">
+              <h4 style="margin-top:0">編輯投票</h4>
+              <label>題目 <input id="pollQ" placeholder="請輸入題目" /></label>
+              <div id="pollOptions" style="margin:10px 0"></div>
+            </div>
+          </div>
+        </section>
+      </section>
+    </div>
+  </main>
+
+  <script src="./qrcode.min.js"></script>
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>

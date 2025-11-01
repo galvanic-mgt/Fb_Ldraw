@@ -1,12 +1,12 @@
-
 <!DOCTYPE html>
 <html lang="zh-HK">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Lucky Draw · CMS & Stage (Modular v2)</title>
+  <title>Lucky Draw · CMS (Firebase-only)</title>
   <link rel="stylesheet" href="./styles.css" />
   <link rel="icon" href="data:,">
+  <style>.chip{display:inline-block;padding:4px 8px;border:1px solid #fff33a33;border-radius:999px;margin:2px}</style>
 </head>
 <body>
   <div id="loginGate" class="overlay" style="display:none">
@@ -22,13 +22,11 @@
 
   <header>
     <div class="container row">
-      <div class="tabs">
-        <button class="btn primary active" type="button">後台 CMS</button>
-      </div>
+      <div class="tabs"><button class="btn primary active" type="button">後台 CMS</button></div>
       <div class="bar" style="margin-left:auto">
-        <a class="btn primary" href="./landing.html" target="_blank" role="button">手機報名頁 ↗</a>
         <a class="btn" href="./public.html" target="_blank" role="button">Public Board ↗</a>
         <a class="btn" href="./tablet.html" target="_blank" role="button">Tablet View ↗</a>
+        <a class="btn primary" href="./landing.html" target="_blank" role="button">Landing ↗</a>
       </div>
     </div>
   </header>
@@ -43,13 +41,8 @@
         <nav id="cmsNav" class="nav-list">
           <button class="nav-item active" data-target="pageEvent">活動資料</button>
           <button class="nav-item" data-target="pageRoster">名單</button>
-          <button class="nav-item" data-target="pagePrizes">獎品</button>
-          <button class="nav-item" data-target="pageStage">舞台</button>
-          <button class="nav-item" data-target="pageQuestions">抽問</button>
+          <button class="nav-item" data-target="pagePrizes">獎品 / 抽獎</button>
           <button class="nav-item" data-target="pagePoll">投票</button>
-          <button class="nav-item" data-target="pageStorage">素材/檔案</button>
-          <button class="nav-item" data-target="pageEventsManage">活動管理</button>
-          <button class="nav-item" data-target="pageUsers">使用者</button>
         </nav>
       </aside>
 
@@ -82,7 +75,7 @@
         </section>
 
         <section class="card subpage" id="pagePrizes" style="display:none">
-          <h3>獎品</h3>
+          <h3>獎品 / 抽獎</h3>
           <div class="bar" style="margin-bottom:8px">
             <input id="newPrizeName" placeholder="獎品名稱" />
             <label>名額 <input type="number" id="newPrizeQuota" value="1" min="1" /></label>
@@ -95,41 +88,12 @@
           <div class="bar">
             <label>批量 <input id="batchCount" type="number" value="1" min="1" /></label>
             <button id="drawBatch" class="btn">抽出</button>
-            <span id="prizeLeftInline" class="stat"></span>
           </div>
-        </section>
-
-        <section class="card subpage" id="pageStage" style="display:none">
-          <h3>舞台看板（簡版）</h3>
-          <div id="stageArea"></div>
-        </section>
-
-        <section class="card subpage" id="pageQuestions" style="display:none">
-          <h3>抽問</h3>
-          <p>（預留）</p>
         </section>
 
         <section class="card subpage" id="pagePoll" style="display:none">
           <h3>投票</h3>
-          <div class="bar">
-            <button id="publishPoll" class="btn">發佈當前投票</button>
-          </div>
-          <div id="pollEditor"></div>
-        </section>
-
-        <section class="card subpage" id="pageStorage" style="display:none">
-          <h3>素材/檔案</h3>
-          <p>（預留）</p>
-        </section>
-
-        <section class="card subpage" id="pageEventsManage" style="display:none">
-          <h3>活動管理</h3>
-          <p>（預留）</p>
-        </section>
-
-        <section class="card subpage" id="pageUsers" style="display:none">
-          <h3>使用者</h3>
-          <p>（預留）</p>
+          <p>（使用 vote.html?event=&poll= ）</p>
         </section>
       </section>
     </div>
@@ -137,8 +101,7 @@
 
   <script src="./qrcode.min.js"></script>
   <script type="module">
-    import { bootCMS } from './src/ui_cms.js';
-    import './src/compat.js';
+    import { bootCMS } from './src/ui_cms_firebase.js';
     document.addEventListener('DOMContentLoaded', bootCMS);
   </script>
 </body>

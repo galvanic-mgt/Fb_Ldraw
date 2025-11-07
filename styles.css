@@ -32,9 +32,7 @@ footer{opacity:.6;text-align:center;padding:10px}
 @media (min-width:1600px){ .banner{height:300px} }
 .prize-title{font-size:clamp(24px,2.6vw,52px);opacity:.95;margin:0 auto 14px;font-weight:800;}
 .batch-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;align-items:stretch;width:100%;max-width:1800px;margin:0 auto 12px}
-.winner-card{position:relative;display:flex;flex-direction:column;justify-content:center;align-items:center;border:3px solid rgba(255,255,255,.75);border-radius:18px;padding:22px 16px;background:rgba(0,0,0,.25);box-shadow:0 8px 20px rgba(0,0,0,.25)}
-.winner-card .name{font-size:clamp(42px,4.5vw,96px);line-height:1.05;font-weight:1000;letter-spacing:.5px;text-shadow:0 6px 24px rgba(0,0,0,.45)}
-.winner-card .dept{margin-top:6px;font-size:clamp(20px,2vw,36px);opacity:.95;color:#d8e2ff;font-weight:600}
+
 .winners-list{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:8px}
 .chip{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:999px;padding:6px 12px;font-size:16px}
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);display:none;align-items:center;justify-content:center;z-index:50}
@@ -50,7 +48,12 @@ footer{opacity:.6;text-align:center;padding:10px}
 body.public-mode header{display:none}
 body.public-mode .container{max-width:100vw;padding:0 0}
 body.public-mode #publicView .stage{min-height:100vh;border-radius:0;border:none}
-.cms-grid{display:grid;grid-template-columns:280px 1fr;gap:12px}
+/* let the right column actually shrink instead of forcing overflow */
+.cms-grid{
+  display:grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap:12px;
+}
 .sidebar{position:sticky;top:76px;align-self:start;background:var(--card);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:12px;height:max-content}
 .sidebar-title{font-weight:800;margin-bottom:8px}
 .event-list{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
@@ -402,10 +405,6 @@ body:not(.tablet-mode)  #tabletView  { display: none !important; }
 /* CMS stage: never let the grid overflow the card */
 #pageStage .batch-grid { max-width: 100%; justify-items: center; }
 
-/* Roster table: dense, one-line rows */
-#pageRoster .table th,
-#pageRoster .table td { padding: 6px 8px; vertical-align: middle; }
-
 #pageRoster .table input {
   padding: 6px 8px;
   height: 32px;
@@ -452,4 +451,539 @@ body:not(.tablet-mode)  #tabletView  { display: none !important; }
 #publicView .stage .stage-inner {
   padding-top: clamp(12px, 6vh, 64px);
   padding-bottom: clamp(12px, 6vh, 64px);
+}
+
+/* put in styles.css */
+#guestTable thead th[data-sort="asc"]::after  { content: " ▲"; opacity:.7; font-size: .9em; }
+#guestTable thead th[data-sort="desc"]::after { content: " ▼"; opacity:.7; font-size: .9em; }
+
+/* Roster table spacing */
+#guestTable th, #guestTable td {
+  padding: 10px 14px;            /* more space between columns */
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+/* Show sort arrows at all times; switch when sorted */
+#guestTable thead th[data-sortable="true"]::after {
+  content: " ↕";
+  opacity: .5;
+  font-size: .9em;
+  margin-left: 4px;
+}
+#guestTable thead th[data-sort="asc"]::after  { content: " ▲"; opacity: .9; }
+#guestTable thead th[data-sort="desc"]::after { content: " ▼"; opacity: .9; }
+
+/* Small buttons look tidy in rows */
+.btn.small { padding: 4px 8px; font-size: 12px; }
+.btn.danger { border-color: #ff6b6b55; color: #ff6b6b; }
+
+#guestTable .in { width: 120px; }
+#guestTable .in.phone { width: 130px; }
+#guestTable .in.name  { width: 160px; }
+
+#guestTable thead th[data-sort="asc"],
+#guestTable thead th[data-sort="desc"] {
+  font-weight: 600;
+}
+
+.stage-host { background:#0f0f0f; color:#fff; padding:12px; border-radius:12px; position:relative; }
+.stage-top { display:flex; align-items:center; gap:12px; }
+.stage-logo { width:80px; height:80px; object-fit:contain; }
+.stage-banner { flex:1; max-height:120px; object-fit:cover; border-radius:8px; }
+
+.stage-msg { margin:10px 0 12px; font-size:1.2rem; }
+
+.winners-grid { display:grid; gap:12px; }
+
+/* responsive sizing by count */
+.winners-1  .winner-card .name { font-size:4.5rem; }
+.winners-2  .winner-card .name { font-size:3.4rem; }
+.winners-3  .winner-card .name { font-size:2.8rem; }
+.winners-4  .winner-card .name { font-size:2.2rem; }
+.winners-5  .winner-card .name { font-size:1.9rem; }
+.winners-6  .winner-card .name { font-size:1.7rem; }
+.winners-7  .winner-card .name { font-size:1.5rem; }
+.winners-8  .winner-card .name { font-size:1.35rem; }
+.winners-9  .winner-card .name { font-size:1.25rem; }
+.winners-10 .winner-card .name { font-size:1.15rem; }
+
+.winners-1  { grid-template-columns: 1fr; }
+.winners-2  { grid-template-columns: 1fr 1fr; }
+.winners-3  { grid-template-columns: 1fr 1fr 1fr; }
+.winners-4  { grid-template-columns: repeat(2, 1fr); }
+.winners-5  { grid-template-columns: repeat(3, 1fr); }
+.winners-6  { grid-template-columns: repeat(3, 1fr); }
+.winners-7  { grid-template-columns: repeat(4, 1fr); }
+.winners-8  { grid-template-columns: repeat(4, 1fr); }
+.winners-9  { grid-template-columns: repeat(5, 1fr); }
+.winners-10 { grid-template-columns: repeat(5, 1fr); }
+
+
+/* Top banner/message area */
+.cms-stage .stage-top {
+  padding: 8px 14px 0;
+}
+.cms-stage .stage-submsg {
+  margin-top: 6px;
+  font-size: clamp(14px, 1.4vw, 18px);
+  font-weight: 600;
+  opacity: .85;
+}
+
+/* Main stage: grid fills the area; countdown overlays it */
+.cms-stage .stage-main {
+  position: relative;
+  display: grid;
+}
+#stageGrid {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  padding: 16px;
+  box-sizing: border-box;
+}
+#stageCountdown {
+  position: absolute;
+  inset: 0;
+  display: none;            /* JS toggles this */
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(48px, 10vw, 160px);
+  font-weight: 900;
+  color: rgba(0,0,0,.85);
+  background: rgba(255, 255, 255, 0);
+  backdrop-filter: blur(2px);
+}
+#stageCountdown.is-active{ display:flex; }
+
+/* Bottom controls stay inside the frame */
+.cms-stage .stage-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px 12px;
+  background: linear-gradient(to top, rgba(255,255,255,.85), rgba(255,255,255,0));
+}
+/* top area */
+.cms-stage .stage-top{ padding:10px 14px 0; }
+.cms-stage .stage-submsg{ margin-top:6px; font-weight:600; opacity:.9; }
+
+/* grid fills the main area */
+#stageGrid{
+  width:100%; height:100%;
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:14px; padding:16px;
+  box-sizing:border-box;
+}
+
+.reroll-log table{ width:100%; border-collapse:collapse; }
+.reroll-log th, .reroll-log td{ padding:6px 8px; border-bottom:1px solid rgba(255,255,255,.06); }
+.reroll-log th{ text-align:left; font-weight:700; color:#e2e8f0; }
+.reroll-log tr:last-child td{ border-bottom:none; }
+
+/* ---- Whole CMS lucky draw is a single 16:9 canvas ---- */
+#pageStageDraw { 
+  display: grid; 
+  place-items: center; 
+  padding: 16px; 
+}
+
+/* Tie the canvas size to its container, not the viewport */
+#cmsStage16x9.cms-stage{
+  aspect-ratio:16/9;
+  width: 100%;            /* ← fill the card’s content box */
+  max-width: 100%;        /* ← never exceed the column */
+  height: auto;           /* aspect-ratio drives height */
+
+  background:#0f1216;
+  color:#111;
+  border-radius:14px;
+  overflow:hidden;
+  box-shadow:0 10px 30px rgba(0,0,0,.35);
+
+  display:grid;
+  grid-template-rows: 96px 88px 1fr 72px;  /* header / prize strip / winners / footer */
+  gap: 8px;
+  padding: 12px 16px;
+  box-sizing: border-box;
+}
+
+
+/* ---- Header: logo + banner ---- */
+.stage-row.header{
+  display:grid;
+  grid-template-columns: 120px 1fr;
+  gap: 16px;
+  align-items:center;
+}
+.logo-box{
+  display:grid; place-items:center;
+  height:72px; border:2px solid rgba(255,255,255,.25);
+  border-radius:8px; color:#e2e8f0; font-weight:700;
+  background: rgba(255,255,255,.04);
+}
+.banner-box{
+  height:72px; border:2px solid rgba(251, 251, 251, 0.25);
+  border-radius:8px; display:grid; place-items:center;
+  color:#e2e8f0; font-weight:700; font-size: clamp(16px,2.2vw,28px);
+  background: rgba(255,255,255,.04);
+}
+
+/* layout for the strip: center the two items */
+.stage-row.prize-strip{
+  display:grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items:center;
+}
+.stage-row.prize-strip .bar{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  white-space:nowrap; /* keep on one line */
+}
+
+/* 現正抽獎： — plain text (remove frame) */
+.current-prize{
+  background:none;
+  border:0;
+  padding:0;
+  margin:0;
+  color:white;
+  font-weight:800;              /* keep your strong label look */
+  font-size:clamp(16px,2vw,26px);
+  
+}
+
+/* 此獎尚餘： — keep .stat pill but ensure white text */
+#prizeLeftInline.stat{ color:#fff; }
+
+/* If you previously hid .prize-left, unhide the new inline pill */
+.prize-left{ display:initial; } /* or remove any .prize-left { display:none } rule */
+
+
+
+/* ---- Winners area: grid + countdown behind ---- */
+.stage-row.winners-area{ position:relative; overflow:hidden; }
+.stage-main{ position:relative; }
+/* never exceed the card; adapt columns */
+#stageGrid{
+  width:100%;
+  height:100%;
+  display:grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
+  padding: 8px;
+  box-sizing: border-box;
+}
+@media (max-width: 1200px){ #stageGrid{ grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 900px) { #stageGrid{ grid-template-columns: repeat(2, 1fr); } }
+
+#stageCountdown{
+  position:absolute; inset:0;
+  z-index:1;                         /* behind the cards */
+  display:none;                      /* JS toggles */
+  display:flex; align-items:center; justify-content:center;
+  font-size: clamp(64px, 12vw, 200px);
+  font-weight: 900;
+  color: rgba(191, 255, 0, 0.615);
+  background-color: #000000ad;
+  pointer-events:none;               /* don't block clicks */
+}
+
+/* ---- Winner card (matches wireframe: rounded pill, dark multiply, reroll button bottom-right) ---- */
+.winner-card{
+  position:relative;
+  display:grid;
+  grid-template-rows: auto auto;
+  align-content:center;
+  justify-items:center;
+
+  padding: 24px;
+  border-radius: 22px;
+  background: rgba(22,24,28,.85);
+  border: 1px solid rgba(255,255,255,.06);
+  box-shadow: 0 6px 16px rgba(0,0,0,.28);
+  color: #ffffff;
+  text-align:center;
+}
+/* Winner name: one line only, clip with ellipsis if too long */
+.winner-card .name{
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;           /* lets it shrink inside grid */
+  line-height: 1.05;
+  color:white;
+}
+
+/* Optional: keep dept tidy too */
+.winner-card .dept{
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.winner-card .btn-reroll{
+  position:absolute; right:12px; bottom:12px;
+  padding: 6px 10px; border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.6);
+  background: rgba(255,255,255,.12);
+  color:#fff; font-weight:700; font-size: 12px;
+  cursor:pointer;
+}
+
+/* ---- Footer stats (centered, two items) ---- */
+.stage-row.footer-stats{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  justify-items:center; align-items:center;
+  color:#e2e8f0; font-weight:700;
+  font-size: clamp(14px,1.6vw,18px);
+}
+
+/* Batch selected (if you render the bar outside the canvas) */
+#drawBtns [data-batch].active{
+  background:#32cd32 !important; color:#000 !important;
+  border-color:#1b8a1b !important;
+  box-shadow:0 0 0 2px rgba(27,138,27,.15) inset;
+}
+
+#cmsNav{
+  position:sticky;
+  top:76px;        /* not 0 */
+  z-index:9;       /* below the header (which is 10) */
+  background:transparent;
+  border-bottom:none;
+}
+
+:root{
+  --headerH: 76px;           /* your sticky header height */
+  --sidebarW: 260px;         /* your left nav width (adjust if different) */
+  --gutter: 24px;            /* side padding around the stage */
+  --controlsH: 64px;         /* approx height of the control bar under the stage */
+}
+
+/* Wrap that holds the 16:9 canvas and centers it */
+.stage-shell{
+  display:grid;
+  justify-items:center;
+  align-content:start;
+  gap:12px;
+  margin-inline:auto;
+  width:100%;
+  /* prevents horizontal scrollbars from any child overflow */
+  overflow-x:hidden;
+}
+
+/* controls centered, never wider than the card */
+.stage-controls{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  align-items:center;
+  justify-content:center;
+  padding:8px 0 0;
+  width:100%;
+  max-width:100%;
+  margin-inline:auto;
+}
+
+/* reroll log spans the card neatly */
+.reroll-log{
+  width:100%;
+  max-width:100%;
+  margin:10px auto 0;
+  background:#0f1216; color:#cbd5e1;
+  border-radius:10px; padding:10px 12px;
+  box-shadow:0 6px 20px rgba(0,0,0,.25);
+  font-size:14px;
+}
+
+/* Safety: nothing inside the stage should push it wider than itself */
+.cms-stage * { max-width:100%; box-sizing:border-box; }
+
+/* Optional: kill any accidental page-wide overflow */
+html, body { overflow-x:hidden; }
+
+/* === Winner grid sizing — final overrides (CSS-only) === */
+
+/* Base: cap at 5 columns by default */
+#stageGrid {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+/* 1 winner: single column, card 70% wide & centered */
+#stageGrid.winners-1 {
+  grid-template-columns: 1fr !important;
+  place-items: center;
+}
+#stageGrid.winners-1 .winner-card {
+  width: 70%;
+  max-width: 100%;
+  justify-self: center;
+}
+
+/* 2–5 winners: match exact count */
+#stageGrid.winners-2 { grid-template-columns: repeat(2, 1fr) !important; }
+#stageGrid.winners-3 { grid-template-columns: repeat(3, 1fr) !important; }
+#stageGrid.winners-4 { grid-template-columns: repeat(4, 1fr) !important; }
+#stageGrid.winners-5 { grid-template-columns: repeat(5, 1fr) !important; }
+
+/* 6–10 winners: always 5 per row (≈20% each) */
+#stageGrid.winners-6,
+#stageGrid.winners-7,
+#stageGrid.winners-8,
+#stageGrid.winners-9,
+#stageGrid.winners-10 {
+  grid-template-columns: repeat(5, 1fr) !important;
+}
+
+/* Ensure cards never force the grid wider */
+#stageGrid .winner-card { max-width: 100%; }
+
+/* Names already single-line; keep it enforced */
+#stageGrid .winner-card .name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+/* Single winner: when the grid has exactly one card */
+#stageGrid > .winner-card:only-child{
+  width: 70%;            /* <- set your desired single-card width */
+  max-width: 100%;
+  justify-self: center;  /* center that fixed width inside the grid */
+}
+
+/* === Restore OLD name-card visuals & grid behavior (adapted to #stageGrid) === */
+
+/* Grid: like old .batch-grid — auto-fit cards, centered block, max width */
+#cmsStage16x9 .stage-main #stageGrid{
+  width:100%;
+  max-width:1800px;            /* from old CSS */
+  margin:0 auto 12px;          /* centers the whole grid */
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)) !important;
+  gap:16px;                    /* old gap */
+  justify-items:center;        /* center each card in its cell */
+  align-content:start;
+}
+
+/* Single winner: keep your desired 70% centered width */
+#cmsStage16x9 .stage-main #stageGrid > .winner-card:only-child{
+  width:70%;
+  max-width:100%;
+  justify-self:center;
+}
+
+/* Winner card look: bring back the old frame + surface + shadow */
+#cmsStage16x9 .stage-main #stageGrid .winner-card{
+  position:relative;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+
+  border:3px solid rgba(255,255,255,.75);
+  border-radius:18px;
+  padding:22px 16px;
+  background:rgba(0,0,0,.25);
+  box-shadow:0 8px 20px rgba(0,0,0,.25);
+  color:#fff;
+}
+
+/* Winner name: old typography + keep single-line */
+#cmsStage16x9 .stage-main #stageGrid .winner-card .name{
+  font-size:clamp(42px, 4.5vw, 96px);
+  line-height:1.05;
+  font-weight:1000;
+  letter-spacing:.5px;
+  text-shadow:0 6px 24px rgba(0,0,0,.45);
+
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  min-width:0;
+}
+
+/* Department: old style + single-line */
+#cmsStage16x9 .stage-main #stageGrid .winner-card .dept{
+  margin-top:6px;
+  font-size:clamp(20px, 2vw, 36px);
+  opacity:.95;
+  color:#d8e2ff;
+  font-weight:600;
+
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  min-width:0;
+}
+/* Winner text stays on one line; size comes from CSS vars we set in JS */
+#stageGrid .winner-card .name{
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+  min-width: 0;
+  font-size: var(--nameSize, 64px);   /* JS will set --nameSize */
+  line-height: 1.05;
+}
+
+#stageGrid .winner-card .dept{
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+  min-width: 0;
+  font-size: var(--deptSize, 24px);   /* JS will set --deptSize */
+}
+
+/* Helpful so measuring is stable */
+#stageGrid .winner-card{ box-sizing: border-box; }
+/* === Winner card text that auto-fits the card (no JS) === */
+/* Make each card its own sizing container */
+#cmsStage16x9 .stage-main #stageGrid .winner-card{
+  container-type: inline-size;   /* enables cqi units */
+}
+
+/* Name scales with the card width; stays on one line */
+#cmsStage16x9 .stage-main #stageGrid .winner-card .name{
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+
+  /* 1cqi = 1% of the card’s width */
+  font-size: clamp(24px, 9cqi, 72px);
+  line-height: 1.05;
+  font-weight: 1000;
+}
+
+/* Bind the grid to the current canvas and let it auto-fit */
+#cmsStage16x9 .stage-main #stageGrid{
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)) !important;
+  justify-content: center;      /* center the set of columns when <100% */
+  justify-items: center;        /* center each card in its track */
+  margin-inline: auto;          /* center the grid block itself */
+  max-width: 1800px;            /* avoids the “stuck left” look with 2–4 cards */
+}
+
+/* Single winner: make the card fill 70% of the canvas, centered */
+#cmsStage16x9 .stage-main #stageGrid > .winner-card:only-child{
+  width: 70%;
+  max-width: 100%;
+  justify-self: center;
+}
+
+/* Names/depts must stay one line inside the card */
+#cmsStage16x9 .stage-main #stageGrid .winner-card .name,
+#cmsStage16x9 .stage-main #stageGrid .winner-card .dept{
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }

@@ -1,1 +1,38 @@
 <!doctype html><html lang="zh-HK"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Tablet View</title><link rel="stylesheet" href="./styles.css"></head><body><main class="container"><div id="tabletPane"></div></main><script type="module">import { renderTabletView } from './src/surfaces_public_tablet.js'; renderTabletView();</script></body></html>
+
+<div class="bar" style="gap:8px">
+  <div id="drawBtns">
+    批次：
+    <button class="btn small" data-batch="1">1</button>
+    … up to 10 …
+  </div>
+  <button id="btnClearScreen" class="btn" style="background:#ffd84d">清空畫面</button>
+  <button id="btnRollRed" class="btn" style="background:#ff5a5f;color:#fff">Roll</button>
+  <span id="stageLeftCount" class="muted" style="margin-left:auto"></span>
+</div>
+<div id="stageHost" class="stage-host"> … </div>
+<script type="module">
+  import { renderStageDraw } from './src/stage_draw_ui.js';
+  import { performDraw } from './src/stage_draw_logic.js';
+  import { setCurrentEventId } from './src/core_firebase.js';
+  const url = new URL(location.href);
+  const eid = url.searchParams.get('event');
+  if(eid) setCurrentEventId(eid);
+  renderStageDraw('tablet');
+  document.getElementById('btnRollRed')?.addEventListener('click', ()=>{
+    // default to last clicked preset, or 1 if none
+    const active = document.querySelector('#drawBtns [data-batch].active');
+    const n = active ? Number(active.getAttribute('data-batch')) : 1;
+    const overlayEl = document.getElementById('stageCountdown');
+    const gridEl = document.getElementById('stageGrid');
+    performDraw(n, { overlayEl, gridEl, afterRender: b => {} });
+  });
+  document.querySelectorAll('#drawBtns [data-batch]')?.forEach(btn=>{
+    btn.addEventListener('click', ()=> {
+      document.querySelectorAll('#drawBtns [data-batch]').forEach(x=>x.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>

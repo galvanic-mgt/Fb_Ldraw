@@ -1,4 +1,15 @@
-<!DOCTYPE html><html lang="zh-HK"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Lucky Draw · CMS (Firebase)</title><link rel="stylesheet" href="./styles.css"/><link rel="icon" href="data:,"><style>.chip{display:inline-block;padding:4px 8px;border:1px solid #fff33a33;border-radius:999px;margin:2px}.row{padding:6px 0;border-bottom:1px dashed #ffffff22}.photo{display:inline-block;margin:6px}</style></head><body>
+<!DOCTYPE html><html lang="zh-HK">
+  <head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Lucky Draw · CMS (Firebase)</title><link rel="stylesheet" href="./styles.css"/>
+    <link rel="icon" href="data:,">
+    <style>.chip{display:inline-block;
+      padding:4px 8px;
+      border:1px solid #e3d61633;
+      border-radius:999px;margin:2px}.photo{display:inline-block;margin:6px}</style>
+      </head>
+<body>
 <div id="loginGate" class="overlay" style="display:none"><form id="loginForm" class="card" style="min-width:320px; background:#121a2b; padding:16px"><h3 style="margin-top:0">登入</h3><label>帳號 <input id="loginUser" placeholder="admin"/></label><label>密碼 <input id="loginPass" type="password" placeholder="admin"/></label><div class="bar" style="margin-top:12px"><button class="btn primary" type="submit">進入</button></div></form></div>
 <header><div class="container row"><div class="tabs"><button class="btn primary active" type="button">後台 CMS</button></div><div class="bar" style="margin-left:auto"><a class="btn" href="./public.html" target="_blank" role="button">Public Board ↗</a><a class="btn" href="./tablet.html" target="_blank" role="button">Tablet View ↗</a><a class="btn primary" href="./landing.html" target="_blank" role="button">Landing ↗</a></div></div></header>
 <main class="container" id="cmsView"><div class="cms-grid">
@@ -6,7 +17,8 @@
 <nav id="cmsNav" class="nav-list">
 <button class="nav-item active" data-target="pageEvent">活動資料</button>
 <button class="nav-item" data-target="pageRoster">名單</button>
-<button class="nav-item" data-target="pagePrizes">獎品 / 抽獎</button>
+<button class="nav-item" data-target="pagePrizes">獎品</button>
+<button class="nav-item" data-target="pageStageDraw">舞台抽獎</button>
 <button class="nav-item" data-target="pageQuestions">抽問</button>
 <button class="nav-item" data-target="pagePoll">投票</button>
 <button class="nav-item" data-target="pageStorage">素材/檔案</button>
@@ -14,15 +26,152 @@
 <button class="nav-item" data-target="pageUsers">使用者</button>
 </nav></aside>
 <section class="cms-main">
+
 <section class="card subpage" id="pageEvent"><h3>活動資料</h3><div class="grid-2">
-<label>活動名稱 <input id="metaName"/></label><label>客戶名稱 <input id="metaClient"/></label><label>是否公開 <input id="metaListed" type="checkbox" checked/></label><label>顯示標題 <input id="evTitle"/></label><label>日期時間 <input id="evDateTime"/></label><label>地點名稱 <input id="evVenue"/></label><label>地址 <input id="evAddress"/></label><label>Google 地圖連結 <input id="evMapUrl"/></label><label>巴士 <textarea id="evBus" rows="3"></textarea></label><label>地鐵/火車 <textarea id="evTrain" rows="3"></textarea></label><label>泊車 <textarea id="evParking" rows="3"></textarea></label><label>備註 <textarea id="evNotes" rows="3"></textarea></label><button id="saveEventInfo" class="btn primary" type="button">💾 儲存</button></div></section>
-<section class="card subpage" id="pageRoster" style="display:none"><h3>名單 / 匯入</h3><div class="bar"><input placeholder="搜尋姓名/部門" id="searchGuest"/><span id="rosterCount"></span></div><input type="file" id="csvFile" accept=".csv"/><div class="bar" style="margin-top:8px"><button id="btnImportCSV" class="btn">匯入 CSV</button><button id="btnExportCSV" class="btn">匯出 CSV</button></div><div id="guestList" style="margin-top:10px"></div></section>
-<section class="card subpage" id="pagePrizes" style="display:none"><h3>獎品 / 抽獎</h3><div class="bar" style="margin-bottom:8px"><input id="newPrizeName" placeholder="獎品名稱"/><label>名額 <input type="number" id="newPrizeQuota" value="1" min="1"/></label><button id="addPrize" class="btn" type="button">+ 新增</button></div><table><thead><tr><th>使用中</th><th>獎品名稱</th><th>名額</th><th>已得獎</th></tr></thead><tbody id="prizeRows"></tbody></table><div class="bar"><label>批量 <input id="batchCount" type="number" value="1" min="1"/></label><button id="drawBatch" class="btn">抽出</button></div><h4>得獎名單</h4><ul id="winnersList"></ul></section>
+<label>活動名稱 <input id="metaName"/></label><label>客戶名稱 <input id="metaClient"/></label><label>是否公開 <input id="metaListed" type="checkbox" checked/></label><label>顯示標題 <input id="evTitle"/></label><label>日期時間 <input id="evDateTime"/></label><label>地點名稱 <input id="evVenue"/></label><label>地址 <input id="evAddress"/></label><label>電話欄位名稱 <input id="evLabelPhone" placeholder="手機 / 電話" /></label>
+<label>部門欄位名稱 <input id="evLabelDept"  placeholder="部門 / 描述" /></label>
+<label>Google 地圖連結 <input id="evMapUrl"/></label><label>巴士 <textarea id="evBus" rows="3"></textarea></label><label>地鐵/火車 <textarea id="evTrain" rows="3"></textarea></label><label>泊車 <textarea id="evParking" rows="3"></textarea></label><label>備註 <textarea id="evNotes" rows="3"></textarea></label><button id="saveEventInfo" class="btn primary" type="button">💾 儲存</button></div></section>
+
+<section class="card subpage" id="pageRoster" style="display:none">
+  <h3>名單 / 匯入</h3>
+
+  <!-- dynamic label legend (optional) -->
+  <div id="rosterLabels" class="muted" style="margin:4px 0 8px; font-size:12px;">
+    <span id="hdrPhone"></span> · <span id="hdrDept"></span>
+  </div>
+
+  <!-- controls -->
+  <div class="bar" style="gap:8px; flex-wrap:wrap">
+    <input placeholder="搜尋姓名/部門/電話/代碼/座位..." id="searchGuest" />
+    <label style="margin-left:auto">每頁顯示
+      <select id="pageSize">
+        <option value="50" selected>50</option>
+        <option value="100">100</option>
+      </select>
+      筆
+    </label>
+    <span id="rosterCount"></span>
+  </div>
+
+  <input type="file" id="csvFile" accept=".csv"/>
+  <div class="bar" style="margin-top:8px">
+    <button id="btnImportCSV" class="btn">匯入 CSV</button>
+    <button id="btnExportCSV" class="btn">匯出 CSV</button>
+    <div style="margin-left:auto; display:flex; align-items:center; gap:8px">
+      <button id="prevPage" class="btn small">上一頁</button>
+      <span id="pageInfo" class="muted"></span>
+      <button id="nextPage" class="btn small">下一頁</button>
+    </div>
+  </div>
+
+  <!-- table -->
+  <div style="margin-top:10px; overflow:auto">
+    <table class="fullwidth" id="guestTable">
+      <thead>
+        <tr>
+          <th data-key="checkedIn" data-sortable="true" style="width:60px">出席</th>
+          <th data-key="name"      data-sortable="true">姓名</th>
+          <th data-key="dept"      data-sortable="true" id="thDept">部門</th>
+          <th data-key="phone"     data-sortable="true" id="thPhone">電話</th>
+          <th data-key="code"      data-sortable="true">代碼</th>
+          <th data-key="table"     data-sortable="true" style="width:80px">枱號</th>
+          <th data-key="seat"      data-sortable="true" style="width:80px">座位</th>
+          <th data-key="prize"     data-sortable="true">獎品</th>
+          <th style="width:200px">操作</th>
+        </tr>
+      </thead>
+      <tbody id="guestTbody"></tbody>
+    </table>
+  </div>
+</section>
+
+<section class="card subpage" id="pageStageDraw" style="display:none">
+  <h3>舞台抽獎</h3>
+
+   <div class="stage-controls">
+    <div id="drawBtns" class="btns">
+      批次：
+      <button class="btn small" data-batch="1">1</button>
+      <button class="btn small" data-batch="2">2</button>
+      <button class="btn small" data-batch="3">3</button>
+      <button class="btn small" data-batch="4">4</button>
+      <button class="btn small" data-batch="5">5</button>
+      <button class="btn small" data-batch="6">6</button>
+      <button class="btn small" data-batch="7">7</button>
+      <button class="btn small" data-batch="8">8</button>
+      <button class="btn small" data-batch="9">9</button>
+      <button class="btn small" data-batch="10">10</button>
+    </div>
+<br>
+    <button id="btnRollMain" class="btn" style="background:#e53935;color:#fff">開始抽獎</button>
+    <button id="btnClearScreen" class="btn" style="background:#ffd84d;color:#000000">清空畫面</button>
+    <button id="btnExportWinners" class="btn">匯出本獎項得獎名單</button>
+
+    <!-- 16:9 CMS Stage (entire lucky draw UI lives inside this box) -->
+<div id="cmsStage16x9" class="cms-stage">
+  <!-- Header row: Logo + Banner -->
+  <div class="stage-row header">
+    <div id="stageLogo" class="logo-box">LOGO</div>
+    <div id="stageBanner" class="banner-box">Banner space</div>
+  </div>
+<!-- Prize strip: two pills centered -->
+<div class="stage-row prize-strip">
+  <div class="spacer"></div>
+
+  <div class="bar">
+    <!-- keep the current prize as-is or also make it a .stat if you want identical look -->
+    <div id="stageCurrentPrize" class="stat current-prize">
+      現正抽獎：<span id="stagePrizeName">—</span>
+    </div>
+
+    <!-- make 此獎尚餘 use the SAME .stat class as 總人數尚餘 -->
+    <div id="prizeLeftInline" class="stat">
+      此獎尚餘：<span id="stagePrizeLeft">—</span>
+    </div>
+  </div>
+
+  <div class="spacer"></div>
+</div>
+
+  <!-- Winners area: grid + backdrop countdown underneath cards -->
+  <div class="stage-row winners-area stage-main">
+    <div id="stageGrid"></div>
+    <div id="stageCountdown"></div>
+  </div>
+
+  <!-- Footer stats (centered under grid): total remaining | total won -->
+  <div class="stage-row footer-stats">
+    <div id="totalLeft" class="stat">總人數尚餘：<span id="stageTotalLeft">—</span></div>
+    <div id="totalWon" class="stat">已得獎：<span id="stageTotalWon">—</span></div>
+  </div>
+</div>
+<!-- reroll record panel under the canvas -->
+ 
+<div id="rerollLogPanel" class="reroll-log"></div>
+</section>
+
+<section class="card subpage" id="pagePrizes" style="display:none"><h3>獎品 / 抽獎</h3><div class="bar" style="margin-bottom:8px"><input id="newPrizeName" placeholder="獎品名稱"/><label>名額 <input type="number" id="newPrizeQuota" value="1" min="1"/></label><button id="addPrize" class="btn" type="button">+ 新增</button></div>
+  <table>
+   <thead>
+     <tr>
+       <th>使用中</th><th>獎品名稱</th><th>名額</th><th>已得獎</th><th style="width:120px">操作</th>
+     </tr>
+   </thead>
+   <tbody id="prizeRows"></tbody>
+ </table>
+<div class="bar"><label>批量 <input id="batchCount" type="number" value="1" min="1"/></label><button id="drawBatch" class="btn">抽出</button></div><h4>得獎名單</h4><ul id="winnersList"></ul></section>
 <section class="card subpage" id="pageQuestions" style="display:none"><h3>抽問</h3><div class="bar"><input id="newQuestion" placeholder="新增問題…"/><button id="btnAddQuestion" class="btn">+ 新增</button></div><ol id="questionList"></ol></section>
 <section class="card subpage" id="pagePoll" style="display:none"><h3>投票</h3><div class="grid-2"><label>題目 <input id="newPollQ" placeholder="例：今晚加菜？"/></label><label>選項（以逗號或換行分隔）<textarea id="newPollOpts" rows="4" placeholder="牛…\n雞…"></textarea></label><button id="btnAddPoll" class="btn">發佈投票</button></div><h4>已發佈</h4><ul id="pollList"></ul></section>
 <section class="card subpage" id="pageStorage" style="display:none"><h3>素材/檔案（URL）</h3><label>Banner URL <input id="bannerUrl"/></label><label>Logo URL <input id="logoUrl"/></label><div class="bar"><button id="saveAssets" class="btn">儲存</button> <button id="addPhoto" class="btn">+ 相片 URL</button></div><div id="photosGrid"></div></section>
-<section class="card subpage" id="pageEventsManage" style="display:none"><h3>活動管理</h3><p>在左側「活動清單」可新增活動、切換活動。</p></section>
+<section class="card subpage" id="pageEventsManage" style="display:none"><h3>活動管理</h3><p>在左側「活動清單」可新增活動、切換活動。</p><div id="eventsAdmin"></div>
+</section>
 <section class="card subpage" id="pageUsers" style="display:none"><h3>使用者</h3><p>現階段使用本機覆蓋登入畫面（無 Firebase Auth）。</p></section>
 </section></div></main>
-<script src="./qrcode.min.js"></script><script type="module">import { bootCMS } from './src/ui_cms_firebase.js'; import { bindLoginOverlay } from './src/admin_overlay.js'; document.addEventListener('DOMContentLoaded', ()=>{ bindLoginOverlay(); bootCMS(); });</script>
+<script src="./qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+<script type="module">
+  import { startApp } from './src/boot.js';
+  startApp();
+</script>
+
 </body></html>

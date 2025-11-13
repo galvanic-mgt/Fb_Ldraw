@@ -155,8 +155,28 @@ export async function drawBatch(n = 1) {
       winnerKeys.has(`${p.name}||${p.dept || ''}`) ? { ...p, prize: prizeName } : p
     );
 
+    // 1) Save winners & people like before
     await setPrizes(eid, prizes);
     await setPeople(eid, peopleUpdated);
+
+    // 2) Single, clean sync to RTDB for public board
+    try {
+      if (window.FB?.patch) {
+        await window.FB.patch(`/events/${eid}/ui`, {
+          stageState: {
+            currentPrizeId: curId,
+            currentBatch: Number(n) || 1,
+            winners: picks.map(w => ({
+              name: w.name,
+              dept: w.dept || '',
+              time: now
+            }))
+          }
+        });
+      }
+    } catch (e) {
+      console.warn('[Draw Sync] Unable to write ui.stageState', e);
+    }
 
     return { ok: true, batch: picks, prizes };
   } catch (err) {

@@ -1,24 +1,29 @@
-<!doctype html><html lang="zh-HK"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Vote</title><link rel="stylesheet" href="./styles.css"><style>.opt{padding:12px;border:1px solid #ffffff33;border-radius:12px;margin:8px 0;cursor:pointer}</style></head>
-<body><main class="container"><h2 id="pollQ">Loading…</h2><div id="opts"></div><p id="thanks" style="display:none">已投票，謝謝！</p></main>
-<script type="module">
-  import { FB } from './src/fb.js';
-  const u=new URL(location.href); const event=u.searchParams.get('event'); const poll=u.searchParams.get('poll');
-  const qEl=document.getElementById('pollQ'); const box=document.getElementById('opts'); const thanks=document.getElementById('thanks');
-  async function boot(){
-    if(!event||!poll){ qEl.textContent='缺少參數 event/poll'; return; }
-    const data = await FB.get(`/events/${event}/polls/${poll}`);
-    if(!data){ qEl.textContent='找不到投票'; return; }
-    qEl.textContent=data.question||'投票';
-    (data.options||[]).forEach(o=>{
-      const div=document.createElement('div'); div.className='opt'; div.textContent=o.text||o.id;
-      div.onclick=async ()=>{
-        const cur = await FB.get(`/events/${event}/polls/${poll}/votes/${o.id}`);
-        const next = (typeof cur==='number'?cur:0)+1;
-        await FB.put(`/events/${event}/polls/${poll}/votes/${o.id}`, next);
-        box.style.display='none'; thanks.style.display='block';
-      };
-      box.appendChild(div);
-    });
-  }
-  boot();
-</script></body></html>
+<!-- vote.html -->
+<!doctype html>
+<html lang="zh-HK">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>投票</title>
+  <link rel="stylesheet" href="./landing.css" />
+  <style>
+    .vote-wrap { max-width: 640px; margin: 0 auto; padding: 16px; }
+    .opt { display: block; padding: 14px 16px; border:1px solid rgba(255,255,255,.15); border-radius:12px; margin:10px 0; font-size:18px }
+    .opt:active { transform: scale(.98) }
+    .muted { opacity:.7; font-size: 14px }
+    .success { color:#7ef58c; margin-top:14px }
+    .error { color:#ff9d9d; margin-top:14px }
+    .hidden { display:none }
+  </style>
+</head>
+<body>
+  <main class="vote-wrap">
+    <h2 id="pollQ">投票</h2>
+    <div id="optWrap"></div>
+    <p id="status" class="muted"></p>
+    <p id="done" class="success hidden">✅ 已記錄你的投票，謝謝！</p>
+    <p id="err" class="error hidden"></p>
+  </main>
+  <script type="module" src="./src/polls_voter.js"></script>
+</body>
+</html>

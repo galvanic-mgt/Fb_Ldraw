@@ -1,3 +1,20 @@
+/* ===== THEME VARIABLES ===== */
+:root {
+  --bg: #ffffff;
+  --card-bg: #3c79e3;
+  --text: #fff;
+  --muted: #8892a5;
+  --border: #1f2633;
+}
+
+body.theme-light {
+  --bg: #f5f7fa;
+  --card-bg: #ffffff;
+  --text: #222;
+  --muted: #666;
+  --border: #d0d4da;
+}
+
 :root{--bg:#0b0f1a;--card:#121a2b;--muted:#90a4c0;--accent:#3bd;--success:#4cd964;--danger:#ff3b30;--warning:#ffd60a}
 *{box-sizing:border-box}
 html,body{height:100%}
@@ -987,3 +1004,17 @@ html, body { overflow-x:hidden; }
   text-overflow: ellipsis;
   min-width: 0;
 }
+.poll-item {
+  border: 1px solid #01002f;
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 10px;
+  background: #07031800;
+}
+.poll-item input {
+  flex: 1;
+  border: 1px solid #16023978;
+  border-radius: 6px;
+  padding: 4px 6px;
+}
+

@@ -1,15 +1,80 @@
-<!doctype html><html lang="zh-HK"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Public Board</title><link rel="stylesheet" href="./styles.css"></head><body><main class="container"><div id="publicBoard"></div></main><script type="module">import { renderPublicBoard } from './src/surfaces_public_tablet.js'; renderPublicBoard();</script></body></html>
-<div class="bar" style="gap:8px">
-  <button id="btnFullscreen" class="btn">全螢幕</button>
-  <span id="stageLeftCount" class="muted" style="margin-left:auto"></span>
-</div>
-<div id="stageHost" class="stage-host"> … same inner as CMS … </div>
-<script type="module">
-  import { renderStageDraw } from './src/stage_draw_ui.js';
-  import { setCurrentEventId } from './src/core_firebase.js';
-  const url = new URL(location.href);
-  const eid = url.searchParams.get('event');
-  if(eid) setCurrentEventId(eid);
-  renderStageDraw('public');
-</script>
-<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+<!doctype html>
+<html lang="zh-HK">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>公眾畫面 · 舞台抽獎</title>
+
+  <!-- ✅ Use the same stylesheet as CMS -->
+  <link rel="stylesheet" href="./styles.css">
+
+<style>
+  /* Full-viewport centering for public view */
+  html, body { height: 100%; margin: 0; background: #0b0d12; }
+
+  /* Isolation wrapper: center content, ignore CMS page layout */
+  .is-public #publicRoot {
+    position: fixed; inset: 0;
+    display: grid; place-items: center;
+    padding: 0; margin: 0;
+  }
+
+  /* Make the stage fill the screen proportionally */
+  .is-public #cmsStage16x9 {
+    width: 100vw; height: 100vh;
+    display: flex; flex-direction: column; justify-content: space-between;
+    box-sizing: border-box; padding: 16px;
+  }
+
+  /* Nuke typical CMS layout constraints that cause left-hug */
+  .is-public .card,
+  .is-public .subpage,
+  .is-public .wrap,
+  .is-public .container {
+    width: auto; max-width: none; margin: 0; padding: 0;
+  }
+
+  /* Ensure rows expand to full width under any inherited rules */
+  .is-public .stage-row { width: 100%; margin: 0; }
+</style>
+
+</head>
+<body class="is-public">
+  <div id="publicRoot">
+    <div id="cmsStage16x9" class="cms-stage">
+      <div class="stage-row header">
+        <div id="stageLogo" class="logo-box">LOGO</div>
+        <div id="stageBanner" class="banner-box">Banner space</div>
+      </div>
+
+      <div class="stage-row prize-strip">
+        <div class="spacer"></div>
+        <div class="bar">
+          <div id="stageCurrentPrize" class="stat current-prize">
+            現正抽獎：<span id="stagePrizeName">—</span>
+          </div>
+          <div id="prizeLeftInline" class="stat">
+            此獎尚餘：<span id="stagePrizeLeft">—</span>
+          </div>
+        </div>
+        <div class="spacer"></div>
+      </div>
+
+      <div class="stage-row winners-area stage-main">
+        <div id="stageGrid"></div>
+        <div id="stageCountdown"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ✅ Import the same scripts CMS uses -->
+  <!-- These must come *before* our boot script so renderStageDraw exists -->
+  <script type="module" src="./src/core_firebase.js"></script>
+  <script type="module" src="./src/stage_prizes_firebase.js"></script>
+
+  <!-- ✅ Then our boot script that calls renderStageDraw() -->
+  <script type="module" src="./src/public_stage_boot.js"></script>
+  <script src="./src/public_stage_state.js"></script>
+
+</body>
+</html>

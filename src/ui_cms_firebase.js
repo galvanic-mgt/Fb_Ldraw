@@ -4,6 +4,122 @@ import { listEvents, createEvent, setCurrentEventId, getCurrentEventId, getEvent
 import { addPrize, removePrize, setCurrentPrize, drawBatch } from './stage_prizes_firebase.js';
 import { handleImportCSV, exportCSV } from './roster_firebase.js';
 import { renderStageDraw } from './stage_draw_ui.js';
+import { FB } from './fb.js';
+
+(function(){
+  const btn = document.getElementById('themeToggle');
+  if (!btn) return;
+
+  // Load saved theme
+  const saved = localStorage.getItem('cms-theme') || 'dark';
+  document.body.classList.toggle('theme-light', saved === 'light');
+  updateButton();
+
+  btn.addEventListener('click', () => {
+    const isLight = document.body.classList.toggle('theme-light');
+    localStorage.setItem('cms-theme', isLight ? 'light' : 'dark');
+    updateButton();
+  });
+
+  function updateButton(){
+    const isLight = document.body.classList.contains('theme-light');
+    btn.textContent = isLight ? '🌙 Dark Mode' : '☀️ Normal Mode';
+  }
+})();
+
+
+// --- Helpers (IDs / links / QR / chips) ---
+function makeId(prefix='p'){ return prefix + Math.random().toString(36).slice(2,8); }
+
+// --- Current-poll helpers (non-destructive additions) ---
+function linkTo(file, eid, pid){
+  const u = new URL(location.href);
+  u.pathname = (u.pathname.replace(/[^/]+$/, '') || '/') + file;
+  u.search = `?event=${encodeURIComponent(eid)}&poll=${encodeURIComponent(pid)}`;
+  return u.href;
+}
+
+async function setCurrentPoll(eid, pid){
+  // Store the current poll id under /events/{eid}/ui so public page can follow
+  return window.FB?.patch?.(`/events/${eid}/ui`, { currentPollId: pid, showPollQR: true });
+}
+
+function ensureQR(link){
+  const host = document.getElementById('pollQR');
+  if (!host) return;
+  host.innerHTML = `
+    <div class="grid-2" style="gap:16px;align-items:center">
+      <div id="pollQRCanvas"></div>
+      <div>
+        <div class="muted" style="word-break:break-all">${link}</div>
+        <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+          <button id="copyVoteLink" class="btn">複製投票連結</button>
+          <a class="btn" href="${link}" target="_blank" rel="noopener">開啟投票頁</a>
+        </div>
+      </div>
+    </div>
+  `;
+  if (window.QRCode && document.getElementById('pollQRCanvas')) {
+    // eslint-disable-next-line no-undef
+    new QRCode(document.getElementById('pollQRCanvas'), {
+      text: link, width: 256, height: 256, correctLevel: QRCode.CorrectLevel.M
+    });
+  }
+  document.getElementById('copyVoteLink')?.addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(link); alert('已複製投票連結'); } catch(e){}
+  });
+}
+
+
+function pollPublicBoardLink(eid, pid) {
+  const u = new URL(location.href);
+  u.pathname = (u.pathname.replace(/[^/]+$/, '') || '/') + 'public_poll.html';
+  u.search = `?event=${encodeURIComponent(eid)}&poll=${encodeURIComponent(pid)}`;
+  return u.href;
+}
+function showPollQR(link){
+  const host = document.getElementById('pollQR');
+  if (!host) return;
+  host.innerHTML = `
+    <div class="grid-2" style="gap:16px;align-items:center">
+      <div id="pollQRCanvas"></div>
+      <div>
+        <div class="muted" style="word-break:break-all">${link}</div>
+        <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+          <button id="copyVoteLink" class="btn">複製投票連結</button>
+          <a class="btn" href="${link}" target="_blank" rel="noopener">開啟投票頁</a>
+        </div>
+      </div>
+    </div>`;
+  if (window.QRCode && document.getElementById('pollQRCanvas')) {
+    // eslint-disable-next-line no-undef
+    new QRCode(document.getElementById('pollQRCanvas'), {
+      text: link, width: 256, height: 256, correctLevel: QRCode.CorrectLevel.M
+    });
+  }
+  document.getElementById('copyVoteLink')?.addEventListener('click', async ()=>{
+    try { await navigator.clipboard.writeText(link); alert('已複製投票連結'); } catch(e){}
+  });
+}
+
+function createChip(text){
+  const span = document.createElement('span');
+  span.className = 'chip';
+  span.textContent = text;
+  span.style.cssText = 'display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;background:rgba(255,255,255,.08)';
+  const x = document.createElement('button');
+  x.textContent = '×';
+  x.className = 'btn';
+  x.style.cssText = 'margin-left:6px;padding:0 6px;line-height:1.2';
+  x.onclick = ()=> span.remove();
+  span.appendChild(x);
+  return span;
+}
+
+function getChipValues(){
+  return Array.from(document.querySelectorAll('#optChips .chip'))
+    .map(ch => ch.firstChild?.nodeValue?.trim()).filter(Boolean);
+}
 
 // ====== Roster table state (sorting, paging, caching) ======
 const rosterState = {
@@ -328,8 +444,251 @@ async function renderQuestions(){const list=await getQuestions(getCurrentEventId
 function bindQuestions(){document.getElementById('btnAddQuestion')?.addEventListener('click',async()=>{const eid=getCurrentEventId();const val=document.getElementById('newQuestion')?.value.trim();if(!val)return;const list=await getQuestions(eid);list.push(val);await setQuestions(eid,list);document.getElementById('newQuestion').value='';await renderQuestions();});}
 async function renderAssets(){const a=await getAssets(getCurrentEventId());document.getElementById('bannerUrl').value=a.banner||'';document.getElementById('logoUrl').value=a.logo||'';const grid=document.getElementById('photosGrid');grid.innerHTML='';(a.photos||[]).forEach((url,idx)=>{const d=document.createElement('div');d.className='photo';d.innerHTML=`<img src="${url}" style="max-width:120px"><br><button data-i="${idx}" class="btn small">刪除</button>`;grid.appendChild(d);});grid.querySelectorAll('button').forEach(btn=>btn.onclick=async()=>{const i=Number(btn.dataset.i);const a2=await getAssets(getCurrentEventId());a2.photos.splice(i,1);await setAssets(getCurrentEventId(),a2);await renderAssets();});}
 function bindAssets(){document.getElementById('saveAssets')?.addEventListener('click',async()=>{const eid=getCurrentEventId();const banner=document.getElementById('bannerUrl').value.trim();const logo=document.getElementById('logoUrl').value.trim();const cur=await getAssets(eid);await setAssets(eid,{...cur,banner,logo});await renderAssets();});document.getElementById('addPhoto')?.addEventListener('click',async()=>{const eid=getCurrentEventId();const url=prompt('貼上相片 URL');if(!url)return;const cur=await getAssets(eid);cur.photos=cur.photos||[];cur.photos.push(url.trim());await setAssets(eid,cur);await renderAssets();});}
-async function renderPolls(){const polls=await getPolls(getCurrentEventId());const list=document.getElementById('pollList');list.innerHTML='';Object.values(polls||{}).forEach(p=>{const li=document.createElement('li');const total=Object.values(p.votes||{}).reduce((a,b)=>a+Number(b||0),0);li.innerHTML=`<strong>${p.question}</strong> <small>(共 ${total} 票)</small>`;list.appendChild(li);});}
+async function renderPolls(){
+  const eid = getCurrentEventId();
+  const polls = await getPolls(eid);
+  const list = document.getElementById('pollList');
+  list.innerHTML = '';
+
+  if (!polls || !Object.keys(polls).length) {
+    const li = document.createElement('li');
+    li.className = 'muted';
+    li.textContent = '尚未建立投票';
+    list.appendChild(li);
+    return;
+  }
+
+  const baseUrl = new URL(location.href);
+  const makeLink = (file, pid) => {
+    const u = new URL(baseUrl);
+    u.pathname = (u.pathname.replace(/[^/]+$/, '') || '/') + file;
+    u.search = `?event=${encodeURIComponent(eid)}&poll=${encodeURIComponent(pid)}`;
+    return u.href;
+  };
+
+  // IMPORTANT: iterate entries so we get the RTDB key
+  for (const [pid, p] of Object.entries(polls)) {
+    if (!p) continue;
+    const pollId = p.id || pid; // prefer embedded id, else key
+
+    const li = document.createElement('li');
+    const total = Object.values(p.votes || {}).reduce((a,b)=> a + Number(b || 0), 0);
+    const optionsText = (p.options || []).map(o => o.text).join(' / ') || '—';
+
+    const voteUrl   = makeLink('vote.html',        pollId);
+    const publicUrl = makeLink('public_poll.html', pollId);
+
+    li.innerHTML = `
+      <strong>${p.question || p.q || '(未命名)'}</strong>
+      <small>(共 ${total} 票)</small>
+      <div class="muted">${optionsText}</div>
+      <div class="bar" style="gap:6px;margin-top:6px;flex-wrap:wrap">
+        <button class="btn" data-act="qr">QR</button>
+        <a class="btn" data-act="public" href="${publicUrl}" target="_blank" rel="noopener">公眾畫面</a>
+        <button class="btn" data-act="use">使用此問題</button>
+      </div>
+    `;
+
+    // QR preview
+    li.querySelector('[data-act="qr"]').onclick = () => {
+      const host = document.getElementById('pollQR');
+      if (!host) return;
+      host.innerHTML = `
+        <div class="grid-2" style="gap:16px;align-items:center">
+          <div id="pollQRCanvas"></div>
+          <div>
+            <div class="muted" style="word-break:break-all">${voteUrl}</div>
+            <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+              <button id="copyVoteLink" class="btn">複製投票連結</button>
+              <a class="btn" href="${voteUrl}" target="_blank" rel="noopener">開啟投票頁</a>
+            </div>
+          </div>
+        </div>
+      `;
+      if (window.QRCode && document.getElementById('pollQRCanvas')) {
+        // eslint-disable-next-line no-undef
+        new QRCode(document.getElementById('pollQRCanvas'), {
+          text: voteUrl, width: 256, height: 256, correctLevel: QRCode.CorrectLevel.M
+        });
+      }
+      const copyBtn = document.getElementById('copyVoteLink');
+      if (copyBtn) copyBtn.addEventListener('click', async () => {
+        try { await navigator.clipboard.writeText(voteUrl); alert('已複製投票連結'); } catch(e) {}
+      });
+    };
+
+    // Public page click: hint UI state (safe if FB.patch exists)
+    const pubBtn = li.querySelector('[data-act="public"]');
+    if (pubBtn) pubBtn.addEventListener('click', async () => {
+      try { if (window.FB && window.FB.patch) await window.FB.patch(`/events/${eid}/ui`, { currentPollId: pollId, showPollQR: true }); } catch(_){}
+    });
+
+    // One-click use-this-poll
+    const useBtn = li.querySelector('[data-act="use"]');
+    if (useBtn) useBtn.addEventListener('click', async () => {
+      try {
+        if (window.FB && window.FB.patch) await window.FB.patch(`/events/${eid}/ui`, { currentPollId: pollId, showPollQR: true });
+        alert('已設為目前問題');
+        bindPollPicker(); // refresh dropdown to reflect selection
+      } catch(_){}
+    });
+
+    list.appendChild(li);
+  }
+}
+
+
 function bindPolls(){document.getElementById('btnAddPoll')?.addEventListener('click',async()=>{const eid=getCurrentEventId();const q=document.getElementById('newPollQ').value.trim();const raw=document.getElementById('newPollOpts').value.trim();if(!q||!raw)return;const options=raw.split(/\n|,/).map(s=>s.trim()).filter(Boolean).map((t,i)=>({id:'o'+(i+1),text:t}));const poll={id:'poll'+Date.now().toString(36),question:q,options,votes:{}};await setPoll(eid,poll);document.getElementById('newPollQ').value='';document.getElementById('newPollOpts').value='';await renderPolls();});}
+
+async function bindPollPicker(){
+  const eid   = getCurrentEventId();
+  const sel   = document.getElementById('pollPicker');
+  const btnSet = document.getElementById('btnSetCurrent');
+  const btnQR  = document.getElementById('btnShowPickerQR');
+  if (!sel) return;
+
+  // Load polls + UI state (defensive, no optional chaining)
+  let polls = {};
+  let ui    = {};
+  try { polls = await getPolls(eid) || {}; } catch (e) { polls = {}; }
+  try { 
+    if (window.FB && window.FB.get) {
+      ui = await window.FB.get(`/events/${eid}/ui`) || {};
+    }
+  } catch (e) { ui = {}; }
+
+  const currentId = ui && ui.currentPollId ? ui.currentPollId : null;
+
+  // Build dropdown from entries so we have the poll key as id
+  sel.innerHTML = '';
+  const entries = Object.entries(polls); // [[pid, poll], ...]
+  if (entries.length === 0) {
+    const opt = document.createElement('option');
+    opt.value = '';
+    opt.textContent = '（尚未建立投票）';
+    sel.appendChild(opt);
+  } else {
+    for (const [pid, p] of entries) {
+      const opt = document.createElement('option');
+      opt.value = pid; // use RTDB key as id
+      const title = (p && (p.question || p.q)) ? (p.question || p.q) : '(未命名)';
+      opt.textContent = title;
+      if (pid === currentId) opt.selected = true;
+      sel.appendChild(opt);
+    }
+    // Ensure something is selected
+    if (!sel.value && entries[0]) sel.value = entries[0][0];
+  }
+
+  // "Set current" button
+  if (btnSet) {
+    btnSet.onclick = async function(){
+      const pid = sel.value;
+      if (!pid) return;
+      try {
+        if (window.FB && window.FB.patch) {
+          await window.FB.patch(`/events/${eid}/ui`, { currentPollId: pid, showPollQR: true });
+        }
+        alert('已設為目前問題');
+      } catch (e) { /* ignore */ }
+    };
+  }
+
+  // "Show QR" button
+  if (btnQR) {
+    btnQR.onclick = function(){
+      const pid = sel.value;
+      if (!pid) return;
+
+      const u = new URL(location.href);
+      u.pathname = (u.pathname.replace(/[^/]+$/, '') || '/') + 'vote.html';
+      u.search = `?event=${encodeURIComponent(eid)}&poll=${encodeURIComponent(pid)}`;
+      const link = u.href;
+
+      const host = document.getElementById('pollQR');
+      if (!host) return;
+      host.innerHTML = (
+        '<div class="grid-2" style="gap:16px;align-items:center">' +
+          '<div id="pollQRCanvas"></div>' +
+          '<div>' +
+            '<div class="muted" style="word-break:break-all">' + link + '</div>' +
+            '<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">' +
+              '<button id="copyVoteLink" class="btn">複製投票連結</button>' +
+              '<a class="btn" href="' + link + '" target="_blank" rel="noopener">開啟投票頁</a>' +
+            '</div>' +
+          '</div>' +
+        '</div>'
+      );
+
+      if (window.QRCode && document.getElementById('pollQRCanvas')) {
+        // eslint-disable-next-line no-undef
+        new QRCode(document.getElementById('pollQRCanvas'), {
+          text: link, width: 256, height: 256, correctLevel: QRCode.CorrectLevel.M
+        });
+      }
+      const copyBtn = document.getElementById('copyVoteLink');
+      if (copyBtn) {
+        copyBtn.addEventListener('click', async function(){
+          try { await navigator.clipboard.writeText(link); alert('已複製投票連結'); } catch (e) {}
+        });
+      }
+    };
+  }
+}
+
+
+function bindPollComposer(){
+  const inputQ = document.getElementById('pollQInput');
+  const inOpt = document.getElementById('optInput');
+  const wrap = document.getElementById('optChips');
+  const btnCreate = document.getElementById('btnCreatePoll');
+  const btnClearStage = document.getElementById('btnClearStage');
+
+  // Enter to add chip
+  inOpt?.addEventListener('keydown', e=>{
+    if (e.key === 'Enter' && inOpt.value.trim()){
+      e.preventDefault();
+      wrap.appendChild(createChip(inOpt.value.trim()));
+      inOpt.value = '';
+    }
+  });
+
+  // Create poll
+  btnCreate?.addEventListener('click', async ()=>{
+    const eid = getCurrentEventId();
+    const q = inputQ.value.trim();
+    const opts = getChipValues();
+    if (!eid || !q || !opts.length) { alert('請輸入問題與至少一個選項'); return; }
+    const poll = {
+      id: makeId('p'),
+      question: q,
+      options: opts.map(t => ({ id: makeId('o'), text: t })),
+      votes: {}, active: true, createdAt: Date.now()
+    };
+    await setPoll(eid, poll);
+    // show QR of this new poll
+    showPollQR(linkTo('vote.html', eid, poll.id));
+    // reset UI
+    inputQ.value = ''; wrap.innerHTML = '';
+    await renderPolls();
+  });
+
+  // Clear Stage (hide QR & "next gift" on public screens)
+  btnClearStage?.addEventListener('click', async ()=>{
+    const eid = getCurrentEventId();
+    if (!eid) return;
+    // Write simple UI flags the public pages can watch
+    await FB.patch(`/events/${eid}/ui`, {
+      showPollQR: false,
+      showNextPrize: false,
+      currentPollId: null
+    });
+    // also clear local QR panel
+    document.getElementById('pollQR').innerHTML = '';
+  });
+}
+
+
 function bindPrizeActions(){
   // 新增獎品
   document.getElementById('addPrize')?.addEventListener('click', async ()=>{
@@ -352,7 +711,165 @@ function bindPrizeActions(){
   });
 }
 
+export async function renderPollManager() {
+  const eid = getCurrentEventId();
+  const list = document.getElementById('pollManagerList');
+  if (!eid || !list) return;
+
+  // Fetch polls from RTDB
+  let polls = await getPolls(eid).catch(() => ({}));
+  list.innerHTML = '';
+
+  const entries = Object.entries(polls || {});
+  if (!entries.length) {
+    list.innerHTML = '<li class="muted">尚未建立任何投票問題</li>';
+    return;
+  }
+
+  for (const [pid, p] of entries) {
+    const poll = { id: pid, ...p };
+    const li = document.createElement('li');
+    li.className = 'poll-item';
+    li.innerHTML = `
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <input class="poll-question" value="${poll.question || ''}" placeholder="輸入問題..." />
+        <div class="poll-options"></div>
+        <div class="bar" style="gap:6px;margin-top:4px;flex-wrap:wrap">
+          <button class="btn" data-act="save">💾 儲存</button>
+          <button class="btn" data-act="delete" style="background:#b71c1c;color:white">刪除</button>
+        </div>
+      </div>
+    `;
+
+    // render options
+    const optWrap = li.querySelector('.poll-options');
+    const options = poll.options || [];
+    optWrap.innerHTML = options
+      .map((o, i) => `
+        <div class="bar" style="gap:4px">
+          <input class="poll-opt" value="${o.text || o}" placeholder="選項 ${i + 1}" />
+          ${i === options.length - 1 ? '<button class="btn btn-small" data-act="addopt">＋</button>' : ''}
+        </div>
+      `)
+      .join('') || `
+        <div class="bar" style="gap:4px">
+          <input class="poll-opt" value="" placeholder="選項 1" />
+          <button class="btn btn-small" data-act="addopt">＋</button>
+        </div>`;
+
+    // Bind actions
+    li.addEventListener('click', async (e) => {
+      const act = e.target.dataset.act;
+      if (!act) return;
+
+      if (act === 'save') {
+        const question = li.querySelector('.poll-question').value.trim();
+        const opts = [...li.querySelectorAll('.poll-opt')]
+          .map((i) => i.value.trim())
+          .filter(Boolean)
+          .map((t, idx) => ({ id: `o${idx}`, text: t }));
+
+        if (!question || !opts.length) return alert('請輸入問題與至少一個選項');
+
+        const newPoll = { id: pid, question, options: opts, votes: poll.votes || {} };
+        await FB.put(`/events/${eid}/polls/${pid}`, newPoll);
+        alert('已儲存');
+        renderPollManager();
+      }
+
+      if (act === 'delete') {
+        if (!confirm('確定刪除此問題？')) return;
+        await FB.put(`/events/${eid}/polls/${pid}`, null);
+        renderPollManager();
+      }
+
+      if (act === 'addopt') {
+        const bar = e.target.closest('.poll-options');
+        const n = bar.querySelectorAll('.poll-opt').length + 1;
+        const div = document.createElement('div');
+        div.className = 'bar';
+        div.style.gap = '4px';
+        div.innerHTML = `
+          <input class="poll-opt" value="" placeholder="選項 ${n}" />
+          <button class="btn btn-small" data-act="addopt">＋</button>
+        `;
+        bar.appendChild(div);
+      }
+    });
+
+    list.appendChild(li);
+  }
+}
+
+// Add button to create a new poll
+document.getElementById('btnAddPoll')?.addEventListener('click', async () => {
+  const eid = getCurrentEventId();
+  const newId = 'p' + Math.random().toString(36).slice(2, 8);
+  const blank = { question: '', options: [{ text: '' }], votes: {} };
+  await FB.put(`/events/${eid}/polls/${newId}`, blank);
+  renderPollManager();
+});
+
+
 export async function renderAll(){await renderEventList();await renderEventInfo();await renderRoster();await renderPrizes();await renderQuestions();await renderAssets();await renderPolls();}
-export async function bootCMS(){const u=new URL(location.href);const eid=u.searchParams.get('event');const list=await listEvents();if(eid&&list.some(e=>e.id===eid))setCurrentEventId(eid);else if(list[0])setCurrentEventId(list[0].id);document.querySelectorAll('#cmsNav .nav-item').forEach(b=> b.addEventListener('click',()=> show(b.dataset.target)));bindEventInfoSave();bindRoster();bindPrizeActions();bindQuestions();bindAssets();bindPolls();bootEventsAdmin();await renderAll();}
+export async function bootCMS(){
+  // pick event
+  const u = new URL(location.href);
+  const eid = u.searchParams.get('event');
+  const list = await listEvents();
+  if (eid && list.some(e => e.id === eid)) setCurrentEventId(eid);
+  else if (list[0]) setCurrentEventId(list[0].id);
+
+  // small helper: call a binder if it exists; await if it returns a promise
+  const maybe = async (fn) => {
+    try {
+      if (typeof fn === 'function') {
+        const r = fn();
+        if (r && typeof r.then === 'function') await r;
+      }
+    } catch (err) {
+      console.error('[CMS] binder failed:', fn && fn.name, err);
+    }
+  };
+
+  // nav
+  const navBtns = document.querySelectorAll('#cmsNav .nav-item');
+  navBtns.forEach(b => b.addEventListener('click', () => show(b.dataset.target)));
+
+  // core binders (don’t crash if any is undefined)
+  await maybe(bindEventInfoSave);
+  await maybe(bindRoster);
+  await maybe(bindPrizeActions);
+  await maybe(bindQuestions);
+  await maybe(bindAssets);
+  await maybe(bindPolls);
+  try { await renderPollManager(); } catch (e) { console.error(e); }
+
+
+  // new helpers you recently added — guard them too
+  await maybe(bindPollComposer);   // ok if not present
+  await maybe(bootEventsAdmin);    // ok if not present
+  await maybe(bindPollPicker);     // ok if not present
+
+  // final render
+  if (typeof renderAll === 'function') {
+    await renderAll();
+  } else {
+    // legacy compatibility: render per-tab if needed (won’t throw)
+    await maybe(renderEventInfo);
+    await maybe(renderRoster);
+    await maybe(renderPrizes);
+    await maybe(renderQuestions);
+    await maybe(renderAssets);
+  }
+    // DEV ONLY: expose helpers to the console safely
+  if (typeof window !== 'undefined') {
+    try {
+      window.FB = FB;
+      window.getCurrentEventId = getCurrentEventId;
+    } catch (_) {}
+}
+}
+
 // Let other modules (like events_admin) trigger a full UI refresh
 window.refreshCMS = renderAll;

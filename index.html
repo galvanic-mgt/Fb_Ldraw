@@ -2,16 +2,19 @@
   <head>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Lucky Draw · CMS (Firebase)</title><link rel="stylesheet" href="./styles.css"/>
+    <title>Lucky Draw · CMS (Firebase)</title>
+    <link rel="stylesheet" href="./styles.css"/>
     <link rel="icon" href="data:,">
     <style>.chip{display:inline-block;
       padding:4px 8px;
       border:1px solid #e3d61633;
-      border-radius:999px;margin:2px}.photo{display:inline-block;margin:6px}</style>
+      border-radius:999px;margin:2px}.photo{display:inline-block;margin:6px}
+      </style>
       </head>
 <body>
 <div id="loginGate" class="overlay" style="display:none"><form id="loginForm" class="card" style="min-width:320px; background:#121a2b; padding:16px"><h3 style="margin-top:0">登入</h3><label>帳號 <input id="loginUser" placeholder="admin"/></label><label>密碼 <input id="loginPass" type="password" placeholder="admin"/></label><div class="bar" style="margin-top:12px"><button class="btn primary" type="submit">進入</button></div></form></div>
-<header><div class="container row"><div class="tabs"><button class="btn primary active" type="button">後台 CMS</button></div><div class="bar" style="margin-left:auto"><a class="btn" href="./public.html" target="_blank" role="button">Public Board ↗</a><a class="btn" href="./tablet.html" target="_blank" role="button">Tablet View ↗</a><a class="btn primary" href="./landing.html" target="_blank" role="button">Landing ↗</a></div></div></header>
+<header><div class="container row"><div class="tabs"><button class="btn primary active" type="button">後台 CMS</button></div><div class="bar" style="margin-left:auto"><button id="themeToggle" class="btn small">☀️ Normal Mode</button>
+<a class="btn" href="./public.html" target="_blank" role="button">Public Board ↗</a><a class="btn" href="./tablet.html" target="_blank" role="button">Tablet View ↗</a><a class="btn primary" href="./landing.html" target="_blank" role="button">Landing ↗</a></div></div></header>
 <main class="container" id="cmsView"><div class="cms-grid">
 <aside class="sidebar"><div class="sidebar-title">活動清單</div><div id="eventList" class="event-list"></div><hr style="border-color:rgba(255,255,255,.12)"><div class="sidebar-title">功能頁面</div>
 <nav id="cmsNav" class="nav-list">
@@ -161,7 +164,50 @@
  </table>
 <div class="bar"><label>批量 <input id="batchCount" type="number" value="1" min="1"/></label><button id="drawBatch" class="btn">抽出</button></div><h4>得獎名單</h4><ul id="winnersList"></ul></section>
 <section class="card subpage" id="pageQuestions" style="display:none"><h3>抽問</h3><div class="bar"><input id="newQuestion" placeholder="新增問題…"/><button id="btnAddQuestion" class="btn">+ 新增</button></div><ol id="questionList"></ol></section>
-<section class="card subpage" id="pagePoll" style="display:none"><h3>投票</h3><div class="grid-2"><label>題目 <input id="newPollQ" placeholder="例：今晚加菜？"/></label><label>選項（以逗號或換行分隔）<textarea id="newPollOpts" rows="4" placeholder="牛…\n雞…"></textarea></label><button id="btnAddPoll" class="btn">發佈投票</button></div><h4>已發佈</h4><ul id="pollList"></ul></section>
+<section class="card subpage" id="pagePoll" style="display:none">
+  <h3>投票</h3><div class="grid-2">
+    <label>題目 
+      <!-- Current Poll Picker -->
+<div class="card" style="margin-bottom:12px">
+  <div class="bar" style="gap:8px;flex-wrap:wrap">
+    <label class="muted">目前參與的問題：</label>
+    <select id="pollPicker" class="input" style="min-width:280px"></select>
+    <button id="btnSetCurrent" class="btn">設為目前問題</button>
+    <button id="btnShowPickerQR" class="btn">顯示此問題的 QR</button>
+  </div>
+</div>
+
+      <!-- Quick Compose -->
+<div class="card" style="margin-bottom:12px">
+  <div class="bar" style="gap:8px; flex-wrap:wrap">
+    <input id="pollQInput" class="input" placeholder="問題（例：今晚最喜歡的表演？）" style="flex:1; min-width:280px" />
+    <button id="btnCreatePoll" class="btn">建立投票</button>
+    <button id="btnClearStage" class="btn btn-secondary">清空舞台顯示</button>
+  </div>
+  <div>
+    <div class="muted" style="margin:6px 0">選項（逐個輸入，按 Enter 新增）：</div>
+    <div id="optChips" class="bar" style="gap:8px; flex-wrap:wrap"></div>
+    <input id="optInput" class="input" placeholder="輸入選項後按 Enter" />
+  </div>
+</div>
+
+<!-- Inline QR preview panel -->
+<div class="bar" style="margin:10px 0">
+  <div id="pollQR"></div>
+</div>
+
+<div class="card" id="pollManager">
+  <div class="bar" style="justify-content:space-between;align-items:center">
+    <strong>投票管理</strong>
+    <button id="btnAddPoll" class="btn">＋ 新增問題</button>
+  </div>
+  <ul id="pollManagerList" class="list"></ul>
+</div>
+
+
+<h4 style="display:none">已發佈</h4>
+<ul id="pollList" style="display:none"></ul>
+</section>
 <section class="card subpage" id="pageStorage" style="display:none"><h3>素材/檔案（URL）</h3><label>Banner URL <input id="bannerUrl"/></label><label>Logo URL <input id="logoUrl"/></label><div class="bar"><button id="saveAssets" class="btn">儲存</button> <button id="addPhoto" class="btn">+ 相片 URL</button></div><div id="photosGrid"></div></section>
 <section class="card subpage" id="pageEventsManage" style="display:none"><h3>活動管理</h3><p>在左側「活動清單」可新增活動、切換活動。</p><div id="eventsAdmin"></div>
 </section>

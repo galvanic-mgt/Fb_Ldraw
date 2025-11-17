@@ -1,6 +1,8 @@
 // src/public_stage_boot.js
-import { FB, setCurrentEventId } from './core_firebase.js';
-import { renderStageDraw } from './stage_prizes_firebase.js';
+import { setCurrentEventId } from './core_firebase.js';
+import { FB } from './fb.js';
+import { renderStageDraw } from './stage_draw_ui.js';
+
 
 function getEventId() {
   const u = new URL(location.href);
@@ -28,6 +30,7 @@ async function refreshCurrentPrize(eid) {
   const prizeNameEl = document.getElementById('stagePrizeName');
   const prizeLeftEl = document.getElementById('stagePrizeLeft');
 
+  // current prize id is stored at /events/{eid}/currentPrizeId
   const curId = await FB.get(`/events/${eid}/currentPrizeId`).catch(() => null);
   if (!curId) {
     if (prizeNameEl) prizeNameEl.textContent = '—';
@@ -35,9 +38,19 @@ async function refreshCurrentPrize(eid) {
     return;
   }
 
-  const prize = await FB.get(`/events/${eid}/prizes/${curId}`).catch(() => null);
-  if (prizeNameEl) prizeNameEl.textContent = prize?.name || curId;
-  if (prizeLeftEl)  prizeLeftEl.textContent  = typeof prize?.left === 'number' ? prize.left : '—';
+  // prizes are stored as an array under /events/{eid}/prizes
+  const prizes = await FB.get(`/events/${eid}/prizes`).catch(() => []);
+  const cur = (prizes || []).find(p => p && p.id === curId);
+
+  const name = cur?.name || curId;
+  let left = '—';
+  if (cur && typeof cur.quota === 'number') {
+    const taken = Array.isArray(cur.winners) ? cur.winners.length : 0;
+    left = Math.max(0, cur.quota - taken);
+  }
+
+  if (prizeNameEl) prizeNameEl.textContent = name;
+  if (prizeLeftEl) prizeLeftEl.textContent = left;
 }
 
 async function boot() {

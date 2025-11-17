@@ -43,9 +43,26 @@ button:disabled{opacity:.55;cursor:not-allowed}
 footer{opacity:.6;text-align:center;padding:10px}
 .stage{position:relative;min-height:60vh;border-radius:18px;background:radial-gradient(1200px 600px at 50% 0%,rgba(59,221,255,.18),transparent 60%),rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.08);overflow:hidden}
 .bg{position:absolute;inset:0;background-position:center;background-size:cover;filter:blur(6px) brightness(.6);opacity:.6}
-.logo{position:absolute;left:16px;top:16px;z-index:2;max-width:200px;max-height:80px;opacity:.95}
+.logo{
+  position:absolute;
+  left:16px;
+  top:16px;
+  z-index:2;
+  max-width:200px;
+  max-height:200px;
+  opacity:.100
+}
 .stage-inner{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:24px 32px;text-align:center}
-.banner{width:100%;height:220px;background-size:contain;background-repeat:no-repeat;background-position:center;margin-bottom:16px;border-radius:12px}
+.banner{
+  width:100%;
+  height:220px;
+  max-height: 80px;
+  background-size:contain;
+  background-repeat:no-repeat;
+  background-position:center;
+  margin-bottom:16px;
+  border-radius:12px
+}
 @media (min-width:1600px){ .banner{height:300px} }
 .prize-title{font-size:clamp(24px,2.6vw,52px);opacity:.95;margin:0 auto 14px;font-weight:800;}
 .batch-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;align-items:stretch;width:100%;max-width:1800px;margin:0 auto 12px}
@@ -639,15 +656,15 @@ body:not(.tablet-mode)  #tabletView  { display: none !important; }
 }
 .logo-box{
   display:grid; place-items:center;
-  height:72px; border:2px solid rgba(255,255,255,.25);
+  height:72px; border:0px solid rgba(255, 255, 255, 0);
   border-radius:8px; color:#e2e8f0; font-weight:700;
-  background: rgba(255,255,255,.04);
+  background: rgba(255, 255, 255, 0);
 }
 .banner-box{
-  height:72px; border:2px solid rgba(251, 251, 251, 0.25);
+  height:72px; border:0px solid rgba(251, 251, 251, 0);
   border-radius:8px; display:grid; place-items:center;
   color:#e2e8f0; font-weight:700; font-size: clamp(16px,2.2vw,28px);
-  background: rgba(255,255,255,.04);
+  background: rgba(255, 255, 255, 0);
 }
 
 /* layout for the strip: center the two items */
@@ -877,19 +894,7 @@ html, body { overflow-x:hidden; }
   justify-self: center;  /* center that fixed width inside the grid */
 }
 
-/* === Restore OLD name-card visuals & grid behavior (adapted to #stageGrid) === */
 
-/* Grid: like old .batch-grid — auto-fit cards, centered block, max width */
-#cmsStage16x9 .stage-main #stageGrid{
-  width:100%;
-  max-width:1800px;            /* from old CSS */
-  margin:0 auto 12px;          /* centers the whole grid */
-  display:grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)) !important;
-  gap:16px;                    /* old gap */
-  justify-items:center;        /* center each card in its cell */
-  align-content:start;
-}
 
 /* Single winner: keep your desired 70% centered width */
 #cmsStage16x9 .stage-main #stageGrid > .winner-card:only-child{
@@ -947,8 +952,8 @@ html, body { overflow-x:hidden; }
   overflow: hidden;
   text-overflow: clip;
   min-width: 0;
-  font-size: var(--nameSize, 64px);   /* JS will set --nameSize */
-  line-height: 1.05;
+  font-size: var(--nameSize, 32px);   /* JS will set --nameSize */
+  line-height: 5;
 }
 
 #stageGrid .winner-card .dept{
@@ -975,19 +980,11 @@ html, body { overflow-x:hidden; }
   min-width: 0;
 
   /* 1cqi = 1% of the card’s width */
-  font-size: clamp(24px, 9cqi, 72px);
+  font-size: clamp(23px, 9cqi, 40px);
   line-height: 1.05;
   font-weight: 1000;
 }
 
-/* Bind the grid to the current canvas and let it auto-fit */
-#cmsStage16x9 .stage-main #stageGrid{
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)) !important;
-  justify-content: center;      /* center the set of columns when <100% */
-  justify-items: center;        /* center each card in its track */
-  margin-inline: auto;          /* center the grid block itself */
-  max-width: 1800px;            /* avoids the “stuck left” look with 2–4 cards */
-}
 
 /* Single winner: make the card fill 70% of the canvas, centered */
 #cmsStage16x9 .stage-main #stageGrid > .winner-card:only-child{
@@ -1018,3 +1015,15 @@ html, body { overflow-x:hidden; }
   padding: 4px 6px;
 }
 
+/* Shared: CMS + Public — 5 cards per row, full width */
+.stage-main #stageGrid{
+  width: 100%;
+  max-width: 100%;                  /* use the whole frame */
+  margin-right: 200px;                        /* no extra side margins */
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr)); /* 5 per row */
+  grid-auto-rows: 1fr;              /* 2 rows will share the height */
+  gap: 12px;
+  justify-items: stretch;
+  align-content: center;
+}

@@ -1,63 +1,88 @@
 // Simple public-side listener for /ui/stageState
-(function () {
-  function getEventId() {
-    const u = new URL(location.href);
-    return u.searchParams.get('event') || null;
-  }
+import { FB } from './fb.js';
+import { renderBatchGrid as renderBatchGridCore, fireConfettiAtCards } from './stage_draw_logic.js';
 
-  const eid = getEventId();
-  if (!eid) {
-    console.error('[public_stage_state] Missing ?event= in URL');
-    return;
-  }
+function getEventId() {
+  const u = new URL(location.href);
+  return u.searchParams.get('event') || null;
+}
 
-  async function refreshStage() {
-    if (!window.FB?.get) return;
+const eid = getEventId();
+if (!eid) {
+  console.error('[public_stage_state] Missing ?event= in URL');
+}
 
-    try {
-      const ui = await window.FB.get(`/events/${eid}/ui`).catch(() => null);
-      const state = ui && ui.stageState ? ui.stageState : null;
+// track last batch so we can animate only on changes
+let lastWinnersKey = null;
 
-      const grid = document.getElementById('stageGrid');
-      const prizeSpan = document.getElementById('stagePrizeName');
+function normalizeWinners(raw) {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw;
+  return Object.values(raw);
+}
 
-      if (!grid) return;
+async function refreshStage() {
+  if (!FB?.get || !eid) return;
 
-      grid.innerHTML = '';
+  try {
+    const ui = await FB.get(`/events/${eid}/ui`).catch(() => null);
+    const state = ui && ui.stageState ? ui.stageState : null;
 
-      if (!state || !state.winners) {
-        // nothing drawn yet
-        const div = document.createElement('div');
-        div.className = 'muted';
-        div.textContent = '等待抽獎…';
-        grid.appendChild(div);
-        return;
-      }
+    const grid = document.getElementById('stageGrid');
+    if (!grid) return;
 
-      // Optional: fetch prize name
-      let prizeName = '';
-      if (state.currentPrizeId) {
-        const prize = await window.FB.get(`/events/${eid}/prizes/${state.currentPrizeId}`).catch(() => null);
-        prizeName = prize?.name || state.currentPrizeId;
-      }
+    grid.innerHTML = '';
 
-      if (prizeSpan) prizeSpan.textContent = prizeName || '—';
-
-      Object.values(state.winners).forEach(w => {
-        const card = document.createElement('div');
-        card.className = 'winner-card';
-        card.innerHTML = `
-          <div class="winner-name">${w.name}</div>
-          <div class="winner-dept">${w.dept || ''}</div>
-        `;
-        grid.appendChild(card);
-      });
-    } catch (e) {
-      console.warn('[public_stage_state] refresh error', e);
+    if (!state || !state.winners) {
+      // nothing drawn yet
+      const div = document.createElement('div');
+      div.className = 'muted';
+      div.textContent = '等待抽獎…';
+      grid.appendChild(div);
+      lastWinnersKey = null;
+      return;
     }
-  }
 
-  // Initial + polling (simple & reliable)
-  refreshStage();
-  setInterval(refreshStage, 1000);
-})();
+    const winnersArray = normalizeWinners(state.winners);
+    const key = JSON.stringify(winnersArray.map(w => [w.name, w.dept, w.time]));
+
+    // first load: just render, no countdown
+    if (lastWinnersKey === null) {
+      renderBatchGridCore(grid, winnersArray, 'public');
+      lastWinnersKey = key;
+      return;
+    }
+
+    // no change: keep grid in sync but no animation
+    if (key === lastWinnersKey) {
+      renderBatchGridCore(grid, winnersArray, 'public');
+      return;
+    }
+
+    // new winners: animate 3-2-1 then render + confetti
+    lastWinnersKey = key;
+
+    const overlay = document.getElementById('stageCountdown');
+    if (overlay) {
+      overlay.style.display = 'flex';
+      overlay.textContent = '3';
+      await new Promise(r => setTimeout(r, 600));
+      overlay.textContent = '2';
+      await new Promise(r => setTimeout(r, 600));
+      overlay.textContent = '1';
+      await new Promise(r => setTimeout(r, 600));
+      overlay.style.display = 'none';
+    }
+
+    renderBatchGridCore(grid, winnersArray, 'public');
+    const cards = grid.querySelectorAll('.winner-card');
+    fireConfettiAtCards(cards);
+
+  } catch (e) {
+    console.warn('[public_stage_state] refresh error', e);
+  }
+}
+
+// Initial + polling (simple & reliable)
+refreshStage();
+setInterval(refreshStage, 1000);

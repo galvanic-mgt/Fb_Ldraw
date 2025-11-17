@@ -13,8 +13,13 @@
       </head>
 <body>
 <div id="loginGate" class="overlay" style="display:none"><form id="loginForm" class="card" style="min-width:320px; background:#121a2b; padding:16px"><h3 style="margin-top:0">登入</h3><label>帳號 <input id="loginUser" placeholder="admin"/></label><label>密碼 <input id="loginPass" type="password" placeholder="admin"/></label><div class="bar" style="margin-top:12px"><button class="btn primary" type="submit">進入</button></div></form></div>
-<header><div class="container row"><div class="tabs"><button class="btn primary active" type="button">後台 CMS</button></div><div class="bar" style="margin-left:auto"><button id="themeToggle" class="btn small">☀️ Normal Mode</button>
-<a class="btn" href="./public.html" target="_blank" role="button">Public Board ↗</a><a class="btn" href="./tablet.html" target="_blank" role="button">Tablet View ↗</a><a class="btn primary" href="./landing.html" target="_blank" role="button">Landing ↗</a></div></div></header>
+<header><div class="container row"><div class="tabs"><button class="btn primary active" type="button">後台 CMS</button></div>
+  <div class="bar" style="margin-left:auto"><button id="themeToggle" class="btn small">☀️ Normal Mode</button>
+<a class="btn" href="#" id="btnPublicBoard" role="button">Public Board ↗</a>
+<a class="btn" href="./tablet.html" target="_blank" role="button">Tablet View ↗</a>
+<a class="btn primary" href="./landing.html" target="_blank" role="button">Landing ↗</a>
+</div></div>
+</header>
 <main class="container" id="cmsView"><div class="cms-grid">
 <aside class="sidebar"><div class="sidebar-title">活動清單</div><div id="eventList" class="event-list"></div><hr style="border-color:rgba(255,255,255,.12)"><div class="sidebar-title">功能頁面</div>
 <nav id="cmsNav" class="nav-list">
@@ -215,9 +220,36 @@
 </section></div></main>
 <script src="./qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+
 <script type="module">
   import { startApp } from './src/boot.js';
   startApp();
+</script>
+
+<script type="module">
+  import { getCurrentEventId } from './src/core_firebase.js';
+
+  const btnPublic = document.getElementById('btnPublicBoard');
+
+  if (btnPublic) {
+    btnPublic.addEventListener('click', (e) => {
+      e.preventDefault();
+
+      // Use the event currently selected in CMS
+      const eid = getCurrentEventId();
+
+      if (!eid) {
+        alert('請先在左側選擇一個活動（Event）再開啟 Public Board');
+        return;
+      }
+
+      // Build URL: public.html?event=xxxx
+      const url = new URL('./public.html', window.location.href);
+      url.searchParams.set('event', eid);
+
+      window.open(url.toString(), '_blank');  // open Public Board for this event
+    });
+  }
 </script>
 
 </body></html>

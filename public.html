@@ -21,10 +21,17 @@
 
   /* Make the stage fill the screen proportionally */
   .is-public #cmsStage16x9 {
-    width: 100vw; height: 100vh;
-    display: flex; flex-direction: column; justify-content: space-between;
-    box-sizing: border-box; padding: 16px;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;   /* stack from the top, no big gaps */
+    align-items: stretch;
+    box-sizing: border-box;
+    padding: 16px 32px;
+    gap: 48px;                     /* controlled space between rows */
   }
+
 
   /* Nuke typical CMS layout constraints that cause left-hug */
   .is-public .card,
@@ -36,11 +43,98 @@
 
   /* Ensure rows expand to full width under any inherited rules */
   .is-public .stage-row { width: 100%; margin: 0; }
+
+  /* Make 現正抽獎 bigger on public board */
+.is-public .current-prize{
+  font-size: clamp(24px, 3vw, 100px);
+  
+}
+
+/* Optionally also bump the 此獎尚餘 pill a bit */
+.is-public #prizeLeftInline.stat{
+  font-size: clamp(18px, 1vw, 32px);
+  padding: 10px 16px;
+}
+/* PUBLIC VIEW: compress the 現正抽獎 row */
+.is-public .prize-strip {
+    flex: 0 0 auto !important;       /* do NOT stretch vertically */
+    height: auto;
+    padding: 0;
+    margin: 0;
+}
+
+/* reduce vertical padding inside the bar */
+.is-public .prize-strip .bar {
+    padding: 4px 24px !important;    /* was like 12px–20px */
+    height: auto;
+}
+
+/* remove the giant top/bottom spacers */
+.is-public .prize-strip .spacer {
+    flex: 0 0 auto !important; 
+    height: 0 !important;            /* stops them from pushing content down */
+}
+/* PUBLIC VIEW — Logo */
+.is-public #stageLogo {
+    width: 300px;        /* adjust this */
+    height: 300px;        /* adjust this */
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    margin-right: 24px;
+    margin-left: 32px;
+    background-size: contain;   /* ⬅️ key line */
+    overflow: hidden;           /* keep it inside rounded corners */
+    background-size: cover; 
+}
+
+/* PUBLIC VIEW — Banner */
+.is-public #stageBanner {
+    height: 200px;        /* adjust this */
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    border-radius: 0px;
+    background-size: contain;   /* ⬅️ key line */
+    overflow: hidden;           /* keep it inside rounded corners */
+}
+
+/* Public header row container (optional tidy-up) */
+.is-public .header-row {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+}
+
+.is-public .winners-area.stage-main {
+  flex: 1 1 auto;          /* ⬅️ grow to fill leftover space */
+  display: flex;
+  flex-direction: column;
+  min-height: 0;           /* important for flex children to be able to shrink */
+}
+/* PUBLIC: make the winners grid fill the winners area */
+.is-public #stageGrid {
+  flex: 1 1 auto;          /* ⬅️ stretch inside .stage-main */
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-auto-rows: minmax(30px, 1fr);
+  gap: 48px;
+}
+
+/* keep countdown below the grid */
+.is-public #stageCountdown {
+  margin-top: 8px;
+  flex: 0 0 auto;
+}
+
+
 </style>
 
 </head>
 <body class="is-public">
   <div id="publicRoot">
+    
     <div id="cmsStage16x9" class="cms-stage">
       <div class="stage-row header">
         <div id="stageLogo" class="logo-box">LOGO</div>
@@ -64,6 +158,7 @@
         <div id="stageGrid"></div>
         <div id="stageCountdown"></div>
       </div>
+      
     </div>
   </div>
 
@@ -74,7 +169,7 @@
 
   <!-- ✅ Then our boot script that calls renderStageDraw() -->
   <script type="module" src="./src/public_stage_boot.js"></script>
-  <script src="./src/public_stage_state.js"></script>
+  <script type="module" src="./src/public_stage_state.js"></script>
 
 </body>
 </html>

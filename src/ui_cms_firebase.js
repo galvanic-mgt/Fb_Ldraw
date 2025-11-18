@@ -539,8 +539,186 @@ document.getElementById('addPrize')?.addEventListener('click', async ()=>{
 
 async function renderQuestions(){const list=await getQuestions(getCurrentEventId());const ul=document.getElementById('questionList');ul.innerHTML='';list.forEach(q=>{const li=document.createElement('li');li.textContent=q;ul.appendChild(li);});}
 function bindQuestions(){document.getElementById('btnAddQuestion')?.addEventListener('click',async()=>{const eid=getCurrentEventId();const val=document.getElementById('newQuestion')?.value.trim();if(!val)return;const list=await getQuestions(eid);list.push(val);await setQuestions(eid,list);document.getElementById('newQuestion').value='';await renderQuestions();});}
-async function renderAssets(){const a=await getAssets(getCurrentEventId());document.getElementById('bannerUrl').value=a.banner||'';document.getElementById('logoUrl').value=a.logo||'';const grid=document.getElementById('photosGrid');grid.innerHTML='';(a.photos||[]).forEach((url,idx)=>{const d=document.createElement('div');d.className='photo';d.innerHTML=`<img src="${url}" style="max-width:120px"><br><button data-i="${idx}" class="btn small">刪除</button>`;grid.appendChild(d);});grid.querySelectorAll('button').forEach(btn=>btn.onclick=async()=>{const i=Number(btn.dataset.i);const a2=await getAssets(getCurrentEventId());a2.photos.splice(i,1);await setAssets(getCurrentEventId(),a2);await renderAssets();});}
-function bindAssets(){document.getElementById('saveAssets')?.addEventListener('click',async()=>{const eid=getCurrentEventId();const banner=document.getElementById('bannerUrl').value.trim();const logo=document.getElementById('logoUrl').value.trim();const cur=await getAssets(eid);await setAssets(eid,{...cur,banner,logo});await renderAssets();});document.getElementById('addPhoto')?.addEventListener('click',async()=>{const eid=getCurrentEventId();const url=prompt('貼上相片 URL');if(!url)return;const cur=await getAssets(eid);cur.photos=cur.photos||[];cur.photos.push(url.trim());await setAssets(eid,cur);await renderAssets();});}
+function fileToDataURL(file) {
+  return new Promise((resolve, reject) => {
+    if (!file) {
+      resolve('');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => resolve(e.target.result);
+    reader.onerror = (e) => reject(e);
+    reader.readAsDataURL(file);
+  });
+}
+
+async function renderAssets(){
+  const eid = getCurrentEventId();
+  if (!eid) return;
+
+  const assets = await getAssets(eid).catch(() => ({
+    banner: '',
+    logo: '',
+    background: '',
+    photos: [],
+    bannerData: '',
+    logoData: '',
+    backgroundData: ''
+  }));
+
+  const $ = (id) => document.getElementById(id);
+
+  // Fill URL inputs
+  if ($('assetLogoUrl'))        $('assetLogoUrl').value        = assets.logo || '';
+  if ($('assetBannerUrl'))      $('assetBannerUrl').value      = assets.banner || '';
+  if ($('assetBackgroundUrl'))  $('assetBackgroundUrl').value  = assets.background || '';
+
+  // Previews: prefer Data URL, fallback to URL
+  const logoSrc       = assets.logoData       || assets.logo       || '';
+  const bannerSrc     = assets.bannerData     || assets.banner     || '';
+  const backgroundSrc = assets.backgroundData || assets.background || '';
+
+  if ($('assetLogoPreview')) {
+    if (logoSrc) {
+      $('assetLogoPreview').src = logoSrc;
+      $('assetLogoPreview').style.display = 'inline-block';
+    } else {
+      $('assetLogoPreview').style.display = 'none';
+    }
+  }
+
+  if ($('assetBannerPreview')) {
+    if (bannerSrc) {
+      $('assetBannerPreview').src = bannerSrc;
+      $('assetBannerPreview').style.display = 'inline-block';
+    } else {
+      $('assetBannerPreview').style.display = 'none';
+    }
+  }
+
+  if ($('assetBackgroundPreview')) {
+    if (backgroundSrc) {
+      $('assetBackgroundPreview').src = backgroundSrc;
+      $('assetBackgroundPreview').style.display = 'inline-block';
+    } else {
+      $('assetBackgroundPreview').style.display = 'none';
+    }
+  }
+
+  // Photos grid
+  const grid = $('photosGrid');
+  if (!grid) return;
+
+  grid.innerHTML = '';
+
+  const photos = Array.isArray(assets.photos) ? assets.photos : [];
+  if (!photos.length) {
+    const p = document.createElement('p');
+    p.className = 'muted';
+    p.textContent = '尚未加入任何相片 URL。';
+    grid.appendChild(p);
+    return;
+  }
+
+  photos.forEach((url, i) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'photo';
+    wrap.style.display = 'inline-block';
+    wrap.style.margin = '4px';
+    wrap.innerHTML = `
+      <div>
+        <img src="${url}" style="max-width:160px;max-height:120px;display:block;margin-bottom:4px" alt="photo ${i+1}">
+      </div>
+      <div style="font-size:11px;word-break:break-all;margin-bottom:4px">${url}</div>
+      <button class="btn small" type="button" data-delete-photo="${i}">刪除</button>
+    `;
+    grid.appendChild(wrap);
+  });
+
+  // Delete handlers
+  grid.querySelectorAll('[data-delete-photo]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const idx = Number(btn.getAttribute('data-delete-photo'));
+      const eidNow = getCurrentEventId();
+      if (!eidNow) return;
+      const current = await getAssets(eidNow);
+      const list = Array.isArray(current.photos) ? current.photos.slice() : [];
+      if (idx >= 0 && idx < list.length) {
+        list.splice(idx, 1);
+        await setAssets(eidNow, { photos: list });
+        await renderAssets();
+      }
+    });
+  });
+}
+function bindAssets(){
+  const $ = (id) => document.getElementById(id);
+
+  // Save button: URL + file uploads
+  $('saveAssets')?.addEventListener('click', async () => {
+    const eid = getCurrentEventId();
+    if (!eid) {
+      alert('請先在左側選擇一個活動（Event）。');
+      return;
+    }
+
+    const logoUrl       = ($('assetLogoUrl')?.value || '').trim();
+    const bannerUrl     = ($('assetBannerUrl')?.value || '').trim();
+    const backgroundUrl = ($('assetBackgroundUrl')?.value || '').trim();
+
+    const logoFile       = $('assetLogoFile')?.files?.[0] || null;
+    const bannerFile     = $('assetBannerFile')?.files?.[0] || null;
+    const backgroundFile = $('assetBackgroundFile')?.files?.[0] || null;
+
+    // Keep existing photos; we only change photos through add/delete controls
+    const current = await getAssets(eid);
+    const photos  = Array.isArray(current.photos) ? current.photos.slice() : [];
+
+    // Read files as Data URL (only if user selected something)
+    const [logoData, bannerData, backgroundData] = await Promise.all([
+      fileToDataURL(logoFile),
+      fileToDataURL(bannerFile),
+      fileToDataURL(backgroundFile),
+    ]);
+
+    const payload = {
+      logo: logoUrl,
+      banner: bannerUrl,
+      background: backgroundUrl,
+      photos
+    };
+
+    if (logoData)       payload.logoData       = logoData;
+    if (bannerData)     payload.bannerData     = bannerData;
+    if (backgroundData) payload.backgroundData = backgroundData;
+
+    await setAssets(eid, payload);
+    alert('已儲存素材設定');
+    await renderAssets();
+  });
+
+  // Add photo URL
+  $('addPhoto')?.addEventListener('click', async () => {
+    const eid = getCurrentEventId();
+    if (!eid) {
+      alert('請先在左側選擇一個活動（Event）。');
+      return;
+    }
+
+    const input = $('assetPhotoUrl');
+    const url = (input?.value || '').trim();
+    if (!url) return;
+
+    const current = await getAssets(eid);
+    const photos = Array.isArray(current.photos) ? current.photos.slice() : [];
+    photos.push(url);
+
+    await setAssets(eid, { photos });
+    input.value = '';
+    await renderAssets();
+  });
+}
+
 async function renderPolls(){
   const eid = getCurrentEventId();
   const polls = await getPolls(eid);

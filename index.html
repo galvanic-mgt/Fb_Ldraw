@@ -213,7 +213,89 @@
 <h4 style="display:none">已發佈</h4>
 <ul id="pollList" style="display:none"></ul>
 </section>
-<section class="card subpage" id="pageStorage" style="display:none"><h3>素材/檔案（URL）</h3><label>Banner URL <input id="bannerUrl"/></label><label>Logo URL <input id="logoUrl"/></label><div class="bar"><button id="saveAssets" class="btn">儲存</button> <button id="addPhoto" class="btn">+ 相片 URL</button></div><div id="photosGrid"></div></section>
+<section class="card subpage" id="pageStorage" style="display:none">
+  <h3>素材/檔案（URL 或 圖片上載）</h3>
+
+  <p class="muted" style="margin-bottom:12px">
+    這裡設定活動的 <strong>Logo</strong>、<strong>Banner</strong> 及 <strong>背景</strong>。<br/>
+    可輸入現有圖片 URL，或直接上載圖片（會以 Data URL 形式儲存在 RTDB）。
+  </p>
+
+  <div class="grid-3" style="gap:16px;align-items:flex-start">
+    <!-- Logo -->
+    <div>
+      <h4>Logo</h4>
+      <label>Logo URL
+        <input id="assetLogoUrl" placeholder="https://example.com/logo.png">
+      </label>
+      <label class="file" style="margin-top:8px">
+        <span>上載 Logo 圖片（覆蓋 URL）</span>
+        <input id="assetLogoFile" type="file" accept="image/*">
+      </label>
+      <div class="muted" style="margin-top:4px;font-size:12px">
+        會優先使用上載的圖；如沒有上載則使用 URL。
+      </div>
+      <div style="margin-top:8px">
+        <div class="muted" style="font-size:12px">預覽：</div>
+        <img id="assetLogoPreview" class="photo" style="max-width:100%;display:none" alt="Logo 預覽">
+      </div>
+    </div>
+
+    <!-- Banner -->
+    <div>
+      <h4>Banner</h4>
+      <label>Banner URL
+        <input id="assetBannerUrl" placeholder="https://example.com/banner.jpg">
+      </label>
+      <label class="file" style="margin-top:8px">
+        <span>上載 Banner 圖片（覆蓋 URL）</span>
+        <input id="assetBannerFile" type="file" accept="image/*">
+      </label>
+      <div class="muted" style="margin-top:4px;font-size:12px">
+        會優先使用上載的圖；如沒有上載則使用 URL。
+      </div>
+      <div style="margin-top:8px">
+        <div class="muted" style="font-size:12px">預覽：</div>
+        <img id="assetBannerPreview" class="photo" style="max-width:100%;display:none" alt="Banner 預覽">
+      </div>
+    </div>
+
+    <!-- Background -->
+    <div>
+      <h4>背景 Background</h4>
+      <label>背景 URL
+        <input id="assetBackgroundUrl" placeholder="https://example.com/background.jpg">
+      </label>
+      <label class="file" style="margin-top:8px">
+        <span>上載背景圖（覆蓋 URL）</span>
+        <input id="assetBackgroundFile" type="file" accept="image/*">
+      </label>
+      <div class="muted" style="margin-top:4px;font-size:12px">
+        Landing 頁優先用上載背景圖，其次使用 URL，如都沒有則退回到相片或 Banner。
+      </div>
+      <div style="margin-top:8px">
+        <div class="muted" style="font-size:12px">預覽：</div>
+        <img id="assetBackgroundPreview" class="photo" style="max-width:100%;display:none" alt="背景預覽">
+      </div>
+    </div>
+  </div>
+
+  <hr style="margin:16px 0;opacity:.3"/>
+
+  <!-- Photos list -->
+  <div>
+    <h4>相片（可選，用作背景Carousel或其他用途）</h4>
+    <div class="row" style="gap:8px;flex-wrap:wrap;margin-bottom:8px">
+      <input id="assetPhotoUrl" placeholder="輸入相片 URL" style="flex:1 1 240px">
+      <button id="addPhoto" class="btn">+ 相片 URL</button>
+    </div>
+    <div id="photosGrid"></div>
+  </div>
+
+  <div style="margin-top:16px">
+    <button id="saveAssets" class="btn primary">儲存素材設定</button>
+  </div>
+</section>
 <section class="card subpage" id="pageEventsManage" style="display:none"><h3>活動管理</h3><p>在左側「活動清單」可新增活動、切換活動。</p><div id="eventsAdmin"></div>
 </section>
 <section class="card subpage" id="pageUsers" style="display:none"><h3>使用者</h3><p>現階段使用本機覆蓋登入畫面（無 Firebase Auth）。</p></section>

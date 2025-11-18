@@ -70,6 +70,76 @@ function ensureQR(link){
   });
 }
 
+function ensureLandingQR(eid) {
+  if (!eid) return;
+
+  const link = landingPublicBoardLink(eid);
+
+  // 1) Create the card once under #pageEvent
+  let card = document.getElementById('landingQRCard');
+  if (!card) {
+    const page = document.getElementById('pageEvent');
+    if (!page) return;
+
+    card = document.createElement('div');
+    card.id = 'landingQRCard';
+    card.className = 'card';
+    card.style.marginTop = '16px';
+    card.innerHTML = `
+      <div class="bar" style="justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap">
+        <div>
+          <strong>現場報到 / Landing Page</strong>
+          <p class="muted" style="margin-top:4px;font-size:13px">
+            這個連結和 QR 是給現場參加者報到用的：
+            掃描後會開啟 <code>landing.html?event=…</code>，並連接到目前這個活動。
+          </p>
+        </div>
+        <div id="landingQR" style="margin-top:8px"></div>
+      </div>
+    `;
+    page.appendChild(card);
+  }
+
+  // 2) Fill QR + buttons into #landingQR
+  const host = document.getElementById('landingQR');
+  if (!host) return;
+
+  host.innerHTML = `
+    <div class="grid-2" style="gap:16px;align-items:center">
+      <div id="landingQRCanvas"></div>
+      <div>
+        <div class="muted" style="word-break:break-all">${link}</div>
+        <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+          <button id="copyLandingLink" class="btn">複製 Landing 連結</button>
+          <a class="btn" href="${link}" target="_blank" rel="noopener">開啟 Landing 頁</a>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // 3) Create QR code (uses qrcode.min.js already loaded in index.html)
+  const canvasHost = document.getElementById('landingQRCanvas');
+  if (window.QRCode && canvasHost) {
+    // eslint-disable-next-line no-undef
+    new QRCode(canvasHost, {
+      text: link,
+      width: 256,
+      height: 256,
+      correctLevel: QRCode.CorrectLevel.M
+    });
+  }
+
+  // 4) Copy button
+  document.getElementById('copyLandingLink')?.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(link);
+      alert('已複製 Landing 連結');
+    } catch (e) {
+      // ignore
+    }
+  });
+}
+
 
 function pollPublicBoardLink(eid, pid) {
   const u = new URL(location.href);
@@ -77,6 +147,14 @@ function pollPublicBoardLink(eid, pid) {
   u.search = `?event=${encodeURIComponent(eid)}&poll=${encodeURIComponent(pid)}`;
   return u.href;
 }
+function landingPublicBoardLink(eid) {
+  const u = new URL(location.href);
+  // same folder as index.html, but go to landing.html
+  u.pathname = (u.pathname.replace(/[^/]+$/, '') || '/') + 'landing.html';
+  u.search = `?event=${encodeURIComponent(eid)}`;
+  return u.href;
+}
+
 function showPollQR(link){
   const host = document.getElementById('pollQR');
   if (!host) return;
@@ -186,10 +264,29 @@ async function renderEventList(){
     await renderAll();
   };
 }
-async function renderEventInfo(){const eid=getCurrentEventId();if(!eid)return;const {meta,info}=await getEventInfo(eid);const t=(id,val)=>{const e=document.getElementById(id);if(e)e.value=val||'';};t('evLabelPhone', info.labelPhone);
+async function renderEventInfo(){
+  const eid=getCurrentEventId();
+  if(!eid)return;const {meta,info}=await getEventInfo(eid);
+  const t=(id,val)=>{const e=document.getElementById(id);if(e)e.value=val||'';};
+  t('evLabelPhone', info.labelPhone);
 t('evLabelDept',  info.labelDept);
-t('evTitle',info.title);t('evClient',info.client);t('evDateTime',info.dateTime);t('evVenue',info.venue);t('evAddress',info.address);t('evMapUrl',info.mapUrl);t('evBus',info.bus);t('evTrain',info.train);t('evParking',info.parking);t('evNotes',info.notes);t('metaName',meta.name);t('metaClient',meta.client);{ const el=document.getElementById('metaListed'); if(el) el.checked = meta.listed!==false; }
+t('evTitle',info.title);
+t('evClient',info.client);
+t('evDateTime',info.dateTime);
+t('evVenue',info.venue);
+t('evAddress',info.address);
+t('evMapUrl',info.mapUrl);
+t('evBus',info.bus);
+t('evTrain',info.train);
+t('evParking',info.parking);
+t('evNotes',info.notes);
+t('metaName',meta.name);
+t('metaClient',meta.client);
+{ const el=document.getElementById('metaListed');
+  if(el) el.checked = meta.listed!==false; }
+    ensureLandingQR(eid);
 }
+
 function bindEventInfoSave(){
   document.getElementById('saveEventInfo')?.addEventListener('click', async ()=>{
     const eid=getCurrentEventId(); if(!eid) return;
@@ -813,6 +910,7 @@ document.getElementById('btnAddPoll')?.addEventListener('click', async () => {
 
 export async function renderAll(){await renderEventList();await renderEventInfo();await renderRoster();await renderPrizes();await renderQuestions();await renderAssets();await renderPolls();}
 export async function bootCMS(){
+  
   // pick event
   const u = new URL(location.href);
   const eid = u.searchParams.get('event');
@@ -831,7 +929,7 @@ export async function bootCMS(){
       console.error('[CMS] binder failed:', fn && fn.name, err);
     }
   };
-
+  
   // nav
   const navBtns = document.querySelectorAll('#cmsNav .nav-item');
   navBtns.forEach(b => b.addEventListener('click', () => show(b.dataset.target)));

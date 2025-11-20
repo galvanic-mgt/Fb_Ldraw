@@ -113,14 +113,12 @@
   min-height: 0;           /* important for flex children to be able to shrink */
 }
 /* PUBLIC: make the winners grid fill the winners area */
+/* PUBLIC: let styles.css control layout; only flex-size the container */
 .is-public #stageGrid {
-  flex: 1 1 auto;          /* ⬅️ stretch inside .stage-main */
+  flex: 1 1 auto;
   min-height: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  grid-auto-rows: minmax(30px, 1fr);
-  gap: 48px;
 }
+
 
 /* keep countdown below the grid */
 .is-public #stageCountdown {
@@ -161,8 +159,8 @@
       
     </div>
   </div>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
 
-  <!-- ✅ Import the same scripts CMS uses -->
   <!-- These must come *before* our boot script so renderStageDraw exists -->
   <script type="module" src="./src/core_firebase.js"></script>
   <script type="module" src="./src/stage_prizes_firebase.js"></script>

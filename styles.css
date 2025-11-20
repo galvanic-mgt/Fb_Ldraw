@@ -530,29 +530,6 @@ body:not(.tablet-mode)  #tabletView  { display: none !important; }
 
 .winners-grid { display:grid; gap:12px; }
 
-/* responsive sizing by count */
-.winners-1  .winner-card .name { font-size:4.5rem; }
-.winners-2  .winner-card .name { font-size:3.4rem; }
-.winners-3  .winner-card .name { font-size:2.8rem; }
-.winners-4  .winner-card .name { font-size:2.2rem; }
-.winners-5  .winner-card .name { font-size:1.9rem; }
-.winners-6  .winner-card .name { font-size:1.7rem; }
-.winners-7  .winner-card .name { font-size:1.5rem; }
-.winners-8  .winner-card .name { font-size:1.35rem; }
-.winners-9  .winner-card .name { font-size:1.25rem; }
-.winners-10 .winner-card .name { font-size:1.15rem; }
-
-.winners-1  { grid-template-columns: 1fr; }
-.winners-2  { grid-template-columns: 1fr 1fr; }
-.winners-3  { grid-template-columns: 1fr 1fr 1fr; }
-.winners-4  { grid-template-columns: repeat(2, 1fr); }
-.winners-5  { grid-template-columns: repeat(3, 1fr); }
-.winners-6  { grid-template-columns: repeat(3, 1fr); }
-.winners-7  { grid-template-columns: repeat(4, 1fr); }
-.winners-8  { grid-template-columns: repeat(4, 1fr); }
-.winners-9  { grid-template-columns: repeat(5, 1fr); }
-.winners-10 { grid-template-columns: repeat(5, 1fr); }
-
 
 /* Top banner/message area */
 .cms-stage .stage-top {
@@ -654,18 +631,49 @@ body:not(.tablet-mode)  #tabletView  { display: none !important; }
   gap: 16px;
   align-items:center;
 }
+
+.is-public .stage-row.header{
+  display:grid;
+  grid-template-columns: 1fr 8fr;
+}
+
 .logo-box{
-  display:grid; place-items:center;
-  height:72px; border:0px solid rgba(255, 255, 255, 0);
-  border-radius:8px; color:#e2e8f0; font-weight:700;
-  background: rgba(255, 255, 255, 0);
+  display:grid;
+  place-items:center;
+
+  /* Let width be defined by the grid (1/8 of total via 1fr 7fr) */
+  width: 100%;
+
+  /* Make it a square-ish responsive box */
+  aspect-ratio: 1 / 1;               /* keeps it square */
+  max-height: 18vh;                   /* safety cap on very tall screens */
+
+  border-radius:8px;
+  color:#e2e8f0;
+  font-weight:700;
+
+  /* Background image from JS */
+  background-color: transparent;
+  background-size: contain;           /* fit inside box, keep aspect */
+  background-repeat: no-repeat;
+  background-position: center;
 }
 .banner-box{
-  height:72px; border:0px solid rgba(251, 251, 251, 0);
-  border-radius:8px; display:grid; place-items:center;
-  color:#e2e8f0; font-weight:700; font-size: clamp(16px,2.2vw,28px);
-  background: rgba(255, 255, 255, 0);
+  width: 100%;
+  min-height: clamp(60px, 12vh, 140px);  /* responsive vertical size */
+  border-radius:8px;
+  display:grid;
+  place-items:center;
+  color:#e2e8f0;
+  font-weight:700;
+  font-size: clamp(16px,2.2vw,28px);
+
+  background-color: transparent;
+  background-size: contain;
+  background-repeat:no-repeat;
+  background-position:center;
 }
+
 
 /* layout for the strip: center the two items */
 .stage-row.prize-strip{
@@ -728,39 +736,7 @@ body:not(.tablet-mode)  #tabletView  { display: none !important; }
   pointer-events:none;               /* don't block clicks */
 }
 
-/* ---- Winner card (matches wireframe: rounded pill, dark multiply, reroll button bottom-right) ---- */
-.winner-card{
-  position:relative;
-  display:grid;
-  grid-template-rows: auto auto;
-  align-content:center;
-  justify-items:center;
 
-  padding: 24px;
-  border-radius: 22px;
-  background: rgba(22,24,28,.85);
-  border: 1px solid rgba(255,255,255,.06);
-  box-shadow: 0 6px 16px rgba(0,0,0,.28);
-  color: #ffffff;
-  text-align:center;
-}
-/* Winner name: one line only, clip with ellipsis if too long */
-.winner-card .name{
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;           /* lets it shrink inside grid */
-  line-height: 1.05;
-  color:white;
-}
-
-/* Optional: keep dept tidy too */
-.winner-card .dept{
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
-}
 .winner-card .btn-reroll{
   position:absolute; right:12px; bottom:12px;
   padding: 6px 10px; border-radius: 999px;
@@ -1026,4 +1002,83 @@ html, body { overflow-x:hidden; }
   gap: 12px;
   justify-items: stretch;
   align-content: center;
+}
+
+/* ===== Winners layout ===== */
+
+/* generic winner grid (used for CMS + Public) */
+.winners-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-content: center;
+
+  /* area width – this is your “70% of the section” */
+  width: var(--winners-area-width, 70%);
+  height: 100%;
+  margin: 0 auto;
+
+  /* gap between cards – “5%”ish */
+  gap: var(--winners-gap, 5%);
+}
+
+/* generic winner card shape */
+.winner-card {
+  box-sizing: border-box;
+  padding: 1rem 1.5rem;
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.45);
+
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+
+  text-align: center;
+  max-width: 100%;
+  word-break: break-word;
+}
+
+/* name / dept text (you already had similar) */
+.winner-card .name {
+  font-weight: 700;
+  margin-bottom: 0.3em;
+}
+.winner-card .dept {
+  opacity: .8;
+  font-size: 0.8em;
+}
+/* 1 winner: fill about 70% width area, 50% height */
+.winners-1 .winner-card {
+  flex: 0 0 100%;          /* 100% of the 70% width container */
+  height: 50vh;            /* roughly half the viewport height */
+}
+
+/* 2 winners: two side-by-side, each ~30% of section (inside 70% container) */
+.winners-2 .winner-card {
+  flex: 0 0 30%;
+  min-height: 30vh;
+}
+
+/* 3 winners: 2 on top, 1 wraps to second line on typical screens */
+.winners-3 .winner-card {
+  flex: 0 0 30%;
+  min-height: 24vh;
+}
+
+/* 4 winners: 2x2 grid-ish */
+.winners-4 .winner-card {
+  flex: 0 0 30%;
+  min-height: 22vh;
+}
+
+/* 5+ winners – smaller, more tiles */
+.winners-5 .winner-card,
+.winners-6 .winner-card,
+.winners-7 .winner-card,
+.winners-8 .winner-card,
+.winners-9 .winner-card,
+.winners-10 .winner-card {
+  flex: 0 0 22%;
+  min-height: 16vh;
 }

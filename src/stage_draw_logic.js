@@ -61,7 +61,7 @@ export function fireConfettiAtCards(cards){  // cards: NodeListOf<HTMLElement>
   });
 }
 
-function fitSingleLine(el, { max = 96, min = 16, horizPadding = 24 } = {}) {
+export function fitSingleLine(el, { max = 120, min = 24, horizPadding = 24 } = {}) {
   if (!el || !el.parentElement) return;
   // start big
   let size = max;
@@ -86,11 +86,13 @@ function fitSingleLine(el, { max = 96, min = 16, horizPadding = 24 } = {}) {
   }
 }
 
-function fitWinnerCardText(root) {
+export function fitWinnerCardText(root, opts = {}) {
+  const nameMax = typeof opts.nameMax === 'number' ? opts.nameMax : 120;
+  const deptMax = typeof opts.deptMax === 'number' ? opts.deptMax : 40;
   const cards = root ? root.querySelectorAll('.winner-card') : [];
   cards.forEach(card => {
-    fitSingleLine(card.querySelector('.name'), { max: 96, min: 28, horizPadding: 24 });
-    fitSingleLine(card.querySelector('.dept'), { max: 36, min: 16, horizPadding: 24 });
+    fitSingleLine(card.querySelector('.name'), { max: nameMax, min: 28, horizPadding: 24 });
+    fitSingleLine(card.querySelector('.dept'), { max: deptMax, min: 16, horizPadding: 24 });
   });
 }
 
@@ -103,7 +105,15 @@ export function renderBatchGrid(gridEl, batch, mode){
   if (!gridEl) return;
   gridEl.innerHTML = '';
 
-  const single = Array.isArray(batch) && batch.length === 1;
+  const count = Math.max(0, Array.isArray(batch) ? batch.length : 0);
+  const capped = Math.min(10, Math.max(1, count || 1));
+
+  // apply winners-N class for layout (1–10)
+  const prev = Array.from(gridEl.classList).filter(c => /^winners-\d+$/.test(c));
+  prev.forEach(c => gridEl.classList.remove(c));
+  gridEl.classList.add(`winners-${capped}`);
+
+  const single = capped === 1;
   if (single) {
     gridEl.style.gridTemplateColumns = '1fr';
     gridEl.style.placeItems = 'center';
@@ -124,6 +134,10 @@ export function renderBatchGrid(gridEl, batch, mode){
     `;
     gridEl.appendChild(card);
   });
+
+  // Fit text to each card after render (tighter caps for CMS)
+  const fitOpts = (mode === 'cms') ? { nameMax: 90, deptMax: 32 } : {};
+  fitWinnerCardText(gridEl, fitOpts);
 }
 
 /* ============================================================
@@ -181,17 +195,32 @@ export function bindStageGridDelegation(mode='cms'){
    Draw batch (1–10). Saves to DB via coreDrawBatch.
 ============================================================ */
 export async function performDraw(batchSize, hooks){
-  const { overlayEl, gridEl, afterRender } = hooks || {};
+  const { overlayEl, gridEl, afterRender, skipCountdown } = hooks || {};
   if(drawState.animating) return;
   drawState.animating = true;
 
   try{
-    await countdown321(overlayEl);
+    if (!skipCountdown) {
+      await countdown321(overlayEl);
+    }
 
     const { batch } = await coreDrawBatch(
       Math.min(10, Math.max(1, Number(batchSize)||1))
     );
     drawState.lastBatch = batch || [];
+
+    // Hint public board to skip its countdown if requested
+    if (skipCountdown) {
+      try {
+        const eid = getCurrentEventId();
+        if (eid && FB?.patch) {
+          await FB.patch(`/events/${eid}/ui/stageState`, { skipCountdown: true });
+          await FB.patch(`/events/${eid}/ui`, { skipCountdown: true }); // public fallback
+        }
+      } catch (e) {
+        console.warn('[performDraw] skipCountdown flag patch failed', e);
+      }
+    }
 
     // render grid now
     if (typeof afterRender === 'function') {
@@ -225,8 +254,14 @@ export async function rerollOne(slotIndex, hooks){
   const cur = (prizes || []).find(p => p && p.id === curId);
   if (!cur || !Array.isArray(cur.winners) || !cur.winners[slotIndex]) return;
 
+  // Map slotIndex (on lastBatch) to its position in cur.winners (newest winners are at the end)
+  const batchLen = Array.isArray(drawState.lastBatch) ? drawState.lastBatch.length : 0;
+  const baseIdx = Math.max(0, cur.winners.length - batchLen);
+  const targetIdx = baseIdx + slotIndex;
+  if (!cur.winners[targetIdx]) return;
+
   // Remove that exact winner and persist
-  const removed = cur.winners.splice(slotIndex, 1)[0];
+  const removed = cur.winners.splice(targetIdx, 1)[0];
   await setPrizes(eid, prizes);
 
   // Clear their people[].prize if it matched current prize
@@ -277,9 +312,17 @@ export async function rerollOne(slotIndex, hooks){
 }
 
 // --- Clear only the screen batch (keep DB winners) ---
-export function clearScreenResults(gridEl){
+export async function clearScreenResults(gridEl){
   drawState.lastBatch = [];
   if(gridEl) gridEl.innerHTML = '';
+  try {
+    const eid = getCurrentEventId();
+    if (eid && FB?.patch) {
+      await FB.patch(`/events/${eid}/ui`, { stageState: null });
+    }
+  } catch (e) {
+    console.warn('[clearScreenResults] failed to clear public state', e);
+  }
 }
 
 // --- Export current prize winners as CSV ---

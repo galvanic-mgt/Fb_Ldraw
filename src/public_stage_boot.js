@@ -2,6 +2,7 @@
 import { setCurrentEventId } from './core_firebase.js';
 import { FB } from './fb.js';
 import { renderStageDraw } from './stage_draw_ui.js';
+import { applyBackground } from './ui_background.js';
 
 function getEventId() {
   const u = new URL(location.href);
@@ -39,18 +40,8 @@ async function refreshAssets(eid) {
   const finalLogo   = logoData   || logo   || '';
   const finalBanner = bannerData || banner || '';
 
-  let finalBg = backgroundData || background || '';
-  if (!finalBg) {
-    if (Array.isArray(photos) && photos.length > 0) {
-      finalBg = photos[0];
-    } else {
-      finalBg = finalBanner;
-    }
-  }
-
   const logoEl   = document.getElementById('stageLogo');
   const bannerEl = document.getElementById('stageBanner');
-  const rootEl   = document.getElementById('publicRoot');
 
   // LOGO box
   if (logoEl) {
@@ -74,12 +65,8 @@ async function refreshAssets(eid) {
     }
   }
 
-  // Optional: background for the whole public board
-  if (rootEl && finalBg) {
-    rootEl.style.backgroundImage = `url('${finalBg}')`;
-    rootEl.style.backgroundSize = 'cover';
-    rootEl.style.backgroundPosition = 'center center';
-  }
+  // Full-page background layer with 25% dim
+  await applyBackground(eid, { layerId: 'publicBg', dim: 0.25 });
 }
 
 /**
@@ -133,6 +120,13 @@ async function boot() {
   } catch (e) {
     console.warn('[public_stage_boot] renderStageDraw public failed, retrying default', e);
     try { renderStageDraw(); } catch (e2) { console.error(e2); }
+  }
+
+  // Ensure countdown overlay starts hidden for public board
+  const overlay = document.getElementById('stageCountdown');
+  if (overlay) {
+    overlay.classList.remove('is-active');
+    overlay.style.display = 'none';
   }
 
   // Initial sync

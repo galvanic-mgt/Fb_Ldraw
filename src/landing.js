@@ -61,6 +61,17 @@ async function loadEventHeader(eid) {
   if ($("evBus"))       $("evBus").textContent      = info.bus      || "";
   if ($("evTrain"))     $("evTrain").textContent    = info.train    || "";
   if ($("evParking"))   $("evParking").textContent  = info.parking  || "";
+
+  // Hide empty transport blocks
+  const hasBus     = Boolean((info.bus || '').trim());
+  const hasTrain   = Boolean((info.train || '').trim());
+  const hasParking = Boolean((info.parking || '').trim());
+  const busBlock     = document.getElementById('busBlock');
+  const trainBlock   = document.getElementById('trainBlock');
+  const parkingBlock = document.getElementById('parkingBlock');
+  if (busBlock)     busBlock.style.display     = hasBus ? '' : 'none';
+  if (trainBlock)   trainBlock.style.display   = hasTrain ? '' : 'none';
+  if (parkingBlock) parkingBlock.style.display = hasParking ? '' : 'none';
   if ($("evNotes"))     $("evNotes").textContent    = info.notes    || "";
 
   if ($("mapBtn")) {
@@ -121,9 +132,11 @@ async function loadEventHeader(eid) {
     bannerEl.style.display = "block";
   }
 
-  // Page background (optional; controlled by CSS)
+  // Page background with 25% dark overlay
   if (finalBg) {
-    document.body.style.backgroundImage = `url('${finalBg}')`;
+    const dim = 0.25;
+    document.body.style.backgroundImage =
+      `linear-gradient(rgba(0,0,0,${dim}), rgba(0,0,0,${dim})), url('${finalBg}')`;
     document.body.style.backgroundSize = "cover";
     document.body.style.backgroundPosition = "center center";
   }

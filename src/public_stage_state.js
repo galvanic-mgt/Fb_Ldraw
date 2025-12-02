@@ -34,11 +34,8 @@ async function refreshStage() {
     grid.innerHTML = '';
 
     if (!state || !state.winners) {
-      // nothing drawn yet
-      const div = document.createElement('div');
-      div.className = 'muted';
-      div.textContent = '等待抽獎…';
-      grid.appendChild(div);
+      // nothing drawn yet — keep grid empty
+      grid.innerHTML = '';
       lastWinnersKey = null;
       return;
     }
@@ -59,11 +56,13 @@ async function refreshStage() {
       return;
     }
 
-    // new winners: animate 3-2-1 then render + confetti
+    const skip = (state && state.skipCountdown === true) || ui.skipCountdown === true;
+
+    // new winners: animate (or skip) then render + confetti
     lastWinnersKey = key;
 
     const overlay = document.getElementById('stageCountdown');
-    if (overlay) {
+    if (overlay && !skip) {
       overlay.style.display = 'flex';
       overlay.textContent = '3';
       await new Promise(r => setTimeout(r, 600));
@@ -77,6 +76,12 @@ async function refreshStage() {
     renderBatchGridCore(grid, winnersArray, 'public');
     const cards = grid.querySelectorAll('.winner-card');
     fireConfettiAtCards(cards);
+
+    // clear skip flag so subsequent draws animate unless requested again
+    if (skip) {
+      try { await FB.patch(`/events/${eid}/ui/stageState`, { skipCountdown: false }); } catch(_){}
+      try { await FB.patch(`/events/${eid}/ui`, { skipCountdown: false }); } catch(_){}
+    }
 
   } catch (e) {
     console.warn('[public_stage_state] refresh error', e);

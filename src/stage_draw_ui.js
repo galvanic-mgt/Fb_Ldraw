@@ -1,12 +1,13 @@
 // stage_draw_ui.js (top)
 import {
-  getCurrentEventId, getEventInfo, getPrizes, getCurrentPrizeIdRemote
+  getCurrentEventId, getEventInfo, getPrizes, getCurrentPrizeIdRemote, getPeople
 } from './core_firebase.js';
 
 import {
   performDraw, rerollOne, clearScreenResults, exportCurrentWinners, drawState,
   renderBatchGrid as renderBatchGridCore,
-  renderRerollLog as renderRerollLogCore
+  renderRerollLog as renderRerollLogCore,
+  fitWinnerCardText
 } from './stage_draw_logic.js';
 
 // remove: cellHTML(), renderBatchGrid(), renderRerollLog()
@@ -32,33 +33,6 @@ function showCountdown(){
 function hideCountdown(){
   const el = document.getElementById('stageCountdown');
   if (el) el.classList.remove('is-active');
-}
-
-/* === ADD: text fit helpers (shrink until single line fits the card) === */
-function fitSingleLine(el, { max = 96, min = 28, horizPadding = 24 } = {}) {
-  if (!el || !el.parentElement) return;
-  let size = max;
-  const card = el.closest('.winner-card');
-  if (!card) return;
-
-  // available inner width of the card
-  const avail = Math.max(0, (card.clientWidth || 0) - horizPadding * 2);
-
-  // start big and shrink until scrollWidth fits (stay one line)
-  el.style.fontSize = size + 'px';
-  while (size > min && el.scrollWidth > avail) {
-    size -= 1;
-    el.style.fontSize = size + 'px';
-  }
-}
-
-function fitWinnerCardText(root) {
-  if (!root) return;
-  const cards = root.querySelectorAll('.winner-card');
-  cards.forEach(card => {
-    fitSingleLine(card.querySelector('.name'), { max: 96, min: 28, horizPadding: 24 });
-    fitSingleLine(card.querySelector('.dept'), { max: 36, min: 16, horizPadding: 24 });
-  });
 }
 
 function renderBatchGrid(gridEl, batch, mode){
@@ -95,6 +69,8 @@ export async function renderStageDraw(mode){
   const prizeLeftEl = document.getElementById('stagePrizeLeft');
   const gridEl    = document.getElementById('stageGrid');
   const overlayEl = document.getElementById('stageCountdown');
+  const totalLeftEl = document.getElementById('stageTotalLeft');
+  const totalWonEl  = document.getElementById('stageTotalWon');
   if (overlayEl) overlayEl.classList.remove('is-active'); // start hidden
 
 
@@ -122,7 +98,24 @@ export async function renderStageDraw(mode){
 
   // Render any last batch already in memory (shared renderer)
   renderBatchGridCore(gridEl, drawState.lastBatch, mode);
-  fitWinnerCardText(gridEl); // <<< ADD
+  fitWinnerCardText(gridEl, { nameMax: 90, deptMax: 32 });
+
+  // Totals updater
+  const updateTotals = async () => {
+    const [peopleAll, prizesLatest] = await Promise.all([
+      getPeople(eid),
+      getPrizes(eid)
+    ]);
+    const presentCount = Array.isArray(peopleAll)
+      ? peopleAll.filter(p => p && p.checkedIn).length
+      : 0;
+    const totalWon = Array.isArray(prizesLatest)
+      ? prizesLatest.reduce((acc, p) => acc + ((p?.winners || []).length), 0)
+      : 0;
+    const totalLeft = Math.max(0, presentCount - totalWon);
+    if (totalLeftEl) totalLeftEl.textContent = totalLeft;
+    if (totalWonEl)  totalWonEl.textContent  = totalWon;
+  };
 
 
 // Batch buttons: set .active and read it later when rolling
@@ -142,9 +135,9 @@ if (drawBtnsWrap) {
   const clearBtn  = document.getElementById('btnClearScreen');
   const exportBtn = document.getElementById('btnExportWinners');
 if (clearBtn) {
-   clearBtn.onclick = () => {
+   clearBtn.onclick = async () => {
      hideCountdown();
-     clearScreenResults(gridEl);
+     await clearScreenResults(gridEl);
    };
  }  
 
@@ -152,6 +145,7 @@ if (exportBtn) exportBtn.onclick = ()=> exportCurrentWinners();
 
   // Roll using active batch size
   const rollBtn = document.getElementById('btnRollMain');
+  const rollInstantBtn = document.getElementById('btnRollInstant');
   if (rollBtn) {
     rollBtn.onclick = async ()=>{
   const active = document.querySelector('#drawBtns [data-batch].active');
@@ -165,7 +159,7 @@ if (exportBtn) exportBtn.onclick = ()=> exportCurrentWinners();
     gridEl,
    afterRender: batch => {
     renderBatchGridCore(gridEl, batch, mode);
-    fitWinnerCardText(gridEl);      // <<< ADD
+    fitWinnerCardText(gridEl, { nameMax: 90, deptMax: 32 });
    }
   });
 
@@ -179,10 +173,42 @@ if (exportBtn) exportBtn.onclick = ()=> exportCurrentWinners();
     const left2 = latest ? Math.max(0, latest.quota - (latest.winners?.length||0)) : left;
     prizeLeftEl.textContent = left2;
   }
+  await updateTotals();
   await renderRerollLogCore();
 };
 
-  }  // Re-fit text on resize
-  window.addEventListener('resize', () => fitWinnerCardText(gridEl), { passive: true });
+  }
 
+  // Instant roll (skip countdown, keep confetti)
+  if (rollInstantBtn) {
+    rollInstantBtn.onclick = async ()=>{
+      const active = document.querySelector('#drawBtns [data-batch].active');
+      const n = active ? Number(active.getAttribute('data-batch')) : 1;
+
+      await performDraw(n, {
+        overlayEl,
+        gridEl,
+        skipCountdown: true,
+        afterRender: batch => {
+          renderBatchGridCore(gridEl, batch, mode);
+          fitWinnerCardText(gridEl, { nameMax: 90, deptMax: 32 });
+        }
+      });
+
+      // refresh HUD & reroll log after a draw
+      if (prizeLeftEl) {
+        const latest = (await getPrizes(eid)).find(p=>p.id===curId);
+        const left2 = latest ? Math.max(0, latest.quota - (latest.winners?.length||0)) : left;
+        prizeLeftEl.textContent = left2;
+      }
+      await updateTotals();
+      await renderRerollLogCore();
+    };
+  }
+
+  // Re-fit text on resize
+  window.addEventListener('resize', () => fitWinnerCardText(gridEl, { nameMax: 90, deptMax: 32 }), { passive: true });
+
+  // initial totals
+  await updateTotals();
 }

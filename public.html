@@ -11,6 +11,15 @@
 <style>
   /* Full-viewport centering for public view */
   html, body { height: 100%; margin: 0; background: #0b0d12; }
+  body.is-public { position: relative; overflow: hidden; }
+  #publicBg { z-index: 0; }
+  #publicRoot { position: relative; z-index: 1; }
+
+  /* Let the background show through on public board */
+  .is-public #cmsStage16x9 {
+    background: transparent;
+    box-shadow: none;
+  }
 
   /* Isolation wrapper: center content, ignore CMS page layout */
   .is-public #publicRoot {
@@ -44,9 +53,12 @@
   /* Ensure rows expand to full width under any inherited rules */
   .is-public .stage-row { width: 100%; margin: 0; }
 
-  /* Make 現正抽獎 bigger on public board */
+/* Make 現正抽獎 bigger on public board */
 .is-public .current-prize{
   font-size: clamp(24px, 3vw, 100px);
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.1;
   
 }
 
@@ -54,6 +66,8 @@
 .is-public #prizeLeftInline.stat{
   font-size: clamp(18px, 1vw, 32px);
   padding: 10px 16px;
+  white-space: normal;
+  word-break: break-word;
 }
 /* PUBLIC VIEW: compress the 現正抽獎 row */
 .is-public .prize-strip {
@@ -78,14 +92,12 @@
 .is-public #stageLogo {
     width: 300px;        /* adjust this */
     height: 300px;        /* adjust this */
-    background-size: contain;
+    background-size: contain !important;
     background-repeat: no-repeat;
     background-position: center;
     margin-right: 24px;
     margin-left: 32px;
-    background-size: contain;   /* ⬅️ key line */
     overflow: hidden;           /* keep it inside rounded corners */
-    background-size: cover; 
 }
 
 /* PUBLIC VIEW — Banner */
@@ -117,6 +129,9 @@
 .is-public #stageGrid {
   flex: 1 1 auto;
   min-height: 0;
+  justify-items: center;
+  align-items: start;
+  justify-content: center;
 }
 
 
@@ -125,6 +140,39 @@
   margin-top: 8px;
   flex: 0 0 auto;
 }
+
+/* PUBLIC: center winner cards and text for 1–10 draws */
+.is-public #stageGrid .winner-card {
+  width: 100%;
+  height: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+/* PUBLIC: explicit balanced columns per count */
+.is-public #stageGrid.winners-1 { grid-template-columns: repeat(1, 1fr) !important; }
+.is-public #stageGrid.winners-2 { grid-template-columns: repeat(2, 1fr) !important; }
+.is-public #stageGrid.winners-3 { grid-template-columns: repeat(3, 1fr) !important; }
+.is-public #stageGrid.winners-4 { grid-template-columns: repeat(4, 1fr) !important; }
+.is-public #stageGrid.winners-5 { grid-template-columns: repeat(5, 1fr) !important; }
+.is-public #stageGrid.winners-6 { grid-template-columns: repeat(3, 1fr) !important; }
+.is-public #stageGrid.winners-7 { grid-template-columns: repeat(4, 1fr) !important; }
+.is-public #stageGrid.winners-8 { grid-template-columns: repeat(4, 1fr) !important; }
+.is-public #stageGrid.winners-9 { grid-template-columns: repeat(5, 1fr) !important; }
+.is-public #stageGrid.winners-10{ grid-template-columns: repeat(5, 1fr) !important; }
+
+/* PUBLIC: center last row for 7 (4+3) and 9 (5+4) draws */
+.is-public #stageGrid.winners-7 .winner-card:nth-child(5) { grid-column: 1; }
+.is-public #stageGrid.winners-7 .winner-card:nth-child(6) { grid-column: 2; }
+.is-public #stageGrid.winners-7 .winner-card:nth-child(7) { grid-column: 3; }
+
+.is-public #stageGrid.winners-9 .winner-card:nth-child(6) { grid-column: 1; }
+.is-public #stageGrid.winners-9 .winner-card:nth-child(7) { grid-column: 2; }
+.is-public #stageGrid.winners-9 .winner-card:nth-child(8) { grid-column: 3; }
+.is-public #stageGrid.winners-9 .winner-card:nth-child(9) { grid-column: 4; }
 
 
 </style>

@@ -65,6 +65,7 @@
   <div class="bar" style="margin-top:8px">
     <button id="btnImportCSV" class="btn">匯入 CSV</button>
     <button id="btnExportCSV" class="btn">匯出 CSV</button>
+    <button id="btnDeleteAllRoster" class="btn danger" style="margin-left:8px;background:#b71c1c;color:#fff">清空名單</button>
     <div style="margin-left:auto; display:flex; align-items:center; gap:8px">
       <button id="prevPage" class="btn small">上一頁</button>
       <span id="pageInfo" class="muted"></span>
@@ -85,7 +86,7 @@
           <th data-key="table"     data-sortable="true" style="width:80px">枱號</th>
           <th data-key="seat"      data-sortable="true" style="width:80px">座位</th>
           <th data-key="prize"     data-sortable="true">獎品</th>
-          <th style="width:200px">操作</th>
+          <th style="width:220px">操作</th>
         </tr>
       </thead>
       <tbody id="guestTbody"></tbody>
@@ -112,6 +113,7 @@
     </div>
 <br>
     <button id="btnRollMain" class="btn" style="background:#e53935;color:#fff">開始抽獎</button>
+    <button id="btnRollInstant" class="btn" style="background:#8bc34a;color:#000000">即時抽獎</button>
     <button id="btnClearScreen" class="btn" style="background:#ffd84d;color:#000000">清空畫面</button>
     <button id="btnExportWinners" class="btn">匯出本獎項得獎名單</button>
 
@@ -149,7 +151,7 @@
 
   <!-- Footer stats (centered under grid): total remaining | total won -->
   <div class="stage-row footer-stats">
-    <div id="totalLeft" class="stat">總人數尚餘：<span id="stageTotalLeft">—</span></div>
+    <div id="totalLeft" class="stat">出席並未得獎尚餘：<span id="stageTotalLeft">—</span></div>
     <div id="totalWon" class="stat">已得獎：<span id="stageTotalWon">—</span></div>
   </div>
 </div>
@@ -167,7 +169,7 @@
    </thead>
    <tbody id="prizeRows"></tbody>
  </table>
-<div class="bar"><label>批量 <input id="batchCount" type="number" value="1" min="1"/></label><button id="drawBatch" class="btn">抽出</button></div><h4>得獎名單</h4><ul id="winnersList"></ul></section>
+<h4>得獎名單</h4><ul id="winnersList"></ul></section>
 <section class="card subpage" id="pageQuestions" style="display:none"><h3>抽問</h3><div class="bar"><input id="newQuestion" placeholder="新增問題…"/><button id="btnAddQuestion" class="btn">+ 新增</button></div><ol id="questionList"></ol></section>
 <section class="card subpage" id="pagePoll" style="display:none">
   <h3>投票</h3><div class="grid-2">
@@ -229,11 +231,11 @@
         <input id="assetLogoUrl" placeholder="https://example.com/logo.png">
       </label>
       <label class="file" style="margin-top:8px">
-        <span>上載 Logo 圖片（覆蓋 URL）</span>
+        <span>上載 Logo 圖片（覆蓋 URL，建議 800×800px 以內）</span>
         <input id="assetLogoFile" type="file" accept="image/*">
       </label>
       <div class="muted" style="margin-top:4px;font-size:12px">
-        會優先使用上載的圖；如沒有上載則使用 URL。
+        會優先使用上載的圖；如沒有上載則使用 URL。Logo 會自動等比縮放填入框內。
       </div>
       <div style="margin-top:8px">
         <div class="muted" style="font-size:12px">預覽：</div>

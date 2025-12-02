@@ -1,7 +1,7 @@
 import { listEvents, createEvent, setCurrentEventId, getCurrentEventId, getEventInfo, saveEventInfo,
          getPeople, setPeople, getPrizes, getCurrentPrizeIdRemote, setCurrentPrizeIdRemote,
          getQuestions, setQuestions, getAssets, setAssets, getPolls, setPoll, upsertEventMeta } from './core_firebase.js';
-import { addPrize, removePrize, setCurrentPrize, drawBatch } from './stage_prizes_firebase.js';
+import { addPrize, removePrize, setCurrentPrize } from './stage_prizes_firebase.js';
 import { handleImportCSV, exportCSV } from './roster_firebase.js';
 import { renderStageDraw } from './stage_draw_ui.js';
 import { FB } from './fb.js';
@@ -410,6 +410,7 @@ function renderRow(tr, p, idx, mode){
       <td>${p.prize ? '🎁 '+p.prize : ''}</td>
       <td>
         <button class="btn small edit">編輯</button>
+        <button class="btn small danger delete">刪除</button>
       </td>
     `;
     tr.querySelector('td input[type="checkbox"]').onchange = async (e)=>{
@@ -417,6 +418,13 @@ function renderRow(tr, p, idx, mode){
       await setPeople(eid, people);
     };
     tr.querySelector('.edit').onclick = ()=> renderRow(tr, p, idx, 'edit');
+    tr.querySelector('.delete').onclick = async ()=>{
+      const ok = confirm(`確定刪除「${p.name||''}」？`);
+      if(!ok) return;
+      people.splice(idx, 1);
+      await setPeople(eid, people);
+      await renderRoster();
+    };
   }
 }
 
@@ -452,6 +460,16 @@ function bindRoster(){
     a.href = URL.createObjectURL(new Blob([csv], { type:'text/csv;charset=utf-8;' }));
     a.download = 'roster.csv';
     a.click();
+  });
+
+  // Delete all
+  document.getElementById('btnDeleteAllRoster')?.addEventListener('click', async ()=>{
+    const eid = getCurrentEventId(); if(!eid) return;
+    const ok = confirm('確定要清空全部名單？此動作無法復原。');
+    if(!ok) return;
+    await setPeople(eid, []);
+    rosterState.page = 1;
+    await renderRoster();
   });
 
   // Search (reset to page 1)
@@ -813,7 +831,7 @@ async function renderPolls(){
 }
 
 
-function bindPolls(){document.getElementById('btnAddPoll')?.addEventListener('click',async()=>{const eid=getCurrentEventId();const q=document.getElementById('newPollQ').value.trim();const raw=document.getElementById('newPollOpts').value.trim();if(!q||!raw)return;const options=raw.split(/\n|,/).map(s=>s.trim()).filter(Boolean).map((t,i)=>({id:'o'+(i+1),text:t}));const poll={id:'poll'+Date.now().toString(36),question:q,options,votes:{}};await setPoll(eid,poll);document.getElementById('newPollQ').value='';document.getElementById('newPollOpts').value='';await renderPolls();});}
+function bindPolls(){document.getElementById('btnAddPoll')?.addEventListener('click',async()=>{const eid=getCurrentEventId();const q=document.getElementById('newPollQ').value.trim();const raw=document.getElementById('newPollOpts').value.trim();if(!q||!raw)return;const options=raw.split(/\n|,/).map(s=>s.trim()).filter(Boolean).map((t,i)=>({id:'o'+(i+1),text:t,img:''}));const poll={id:'poll'+Date.now().toString(36),question:q,options,votes:{}};await setPoll(eid,poll);document.getElementById('newPollQ').value='';document.getElementById('newPollOpts').value='';await renderPolls();});}
 
 async function bindPollPicker(){
   const eid   = getCurrentEventId();
@@ -937,7 +955,7 @@ function bindPollComposer(){
     const poll = {
       id: makeId('p'),
       question: q,
-      options: opts.map(t => ({ id: makeId('o'), text: t })),
+      options: opts.map(t => ({ id: makeId('o'), text: t, img: '' })),
       votes: {}, active: true, createdAt: Date.now()
     };
     await setPoll(eid, poll);
@@ -977,13 +995,6 @@ function bindPrizeActions(){
     if (quotaEl) quotaEl.value = '1';
     await renderPrizes();
   });
-
-  // （可選）批量抽出 on 獎品頁的 “抽出” 按鈕，如果你要它生效就保留
-  document.getElementById('drawBatch')?.addEventListener('click', async ()=>{
-    const cnt = Math.max(1, Number(document.getElementById('batchCount')?.value || 1));
-    await drawBatch(cnt);
-    await renderPrizes();
-  });
 }
 
 export async function renderPollManager() {
@@ -1016,19 +1027,27 @@ export async function renderPollManager() {
       </div>
     `;
 
-    // render options
+    // render options (text + image URL)
     const optWrap = li.querySelector('.poll-options');
     const options = poll.options || [];
     optWrap.innerHTML = options
-      .map((o, i) => `
-        <div class="bar" style="gap:4px">
-          <input class="poll-opt" value="${o.text || o}" placeholder="選項 ${i + 1}" />
-          ${i === options.length - 1 ? '<button class="btn btn-small" data-act="addopt">＋</button>' : ''}
-        </div>
-      `)
+      .map((o, i) => {
+        const optId = o.id || `o${i}`;
+        const text = o.text || o;
+        const img = o.img || '';
+        const isLast = i === options.length - 1;
+        return `
+        <div class="bar poll-opt-row" style="gap:4px;align-items:center" data-id="${optId}">
+          <input class="poll-opt" data-field="text" value="${text}" placeholder="選項 ${i + 1}" />
+          <input class="poll-opt-img" data-field="img" value="${img}" placeholder="圖片 URL（可選）" style="flex:1; min-width:160px" />
+          ${img ? `<img src="${img}" style="width:48px;height:48px;object-fit:cover;border-radius:8px;border:1px solid rgba(255,255,255,.12)" alt="">` : ''}
+          ${isLast ? '<button class="btn btn-small" data-act="addopt">＋</button>' : ''}
+        </div>`;
+      })
       .join('') || `
-        <div class="bar" style="gap:4px">
-          <input class="poll-opt" value="" placeholder="選項 1" />
+        <div class="bar poll-opt-row" style="gap:4px;align-items:center" data-id="o0">
+          <input class="poll-opt" data-field="text" value="" placeholder="選項 1" />
+          <input class="poll-opt-img" data-field="img" value="" placeholder="圖片 URL（可選）" style="flex:1; min-width:160px" />
           <button class="btn btn-small" data-act="addopt">＋</button>
         </div>`;
 
@@ -1039,10 +1058,16 @@ export async function renderPollManager() {
 
       if (act === 'save') {
         const question = li.querySelector('.poll-question').value.trim();
-        const opts = [...li.querySelectorAll('.poll-opt')]
-          .map((i) => i.value.trim())
-          .filter(Boolean)
-          .map((t, idx) => ({ id: `o${idx}`, text: t }));
+        const optRows = [...li.querySelectorAll('.poll-opt-row')];
+        const opts = optRows
+          .map((row, idx) => {
+            const text = row.querySelector('[data-field="text"]')?.value.trim() || '';
+            const img = row.querySelector('[data-field="img"]')?.value.trim() || '';
+            if (!text) return null;
+            const id = row.dataset.id || `o${idx}`;
+            return { id, text, img };
+          })
+          .filter(Boolean);
 
         if (!question || !opts.length) return alert('請輸入問題與至少一個選項');
 
@@ -1063,12 +1088,21 @@ export async function renderPollManager() {
         const n = bar.querySelectorAll('.poll-opt').length + 1;
         const div = document.createElement('div');
         div.className = 'bar';
+        div.classList.add('poll-opt-row');
         div.style.gap = '4px';
+        div.style.alignItems = 'center';
+        div.dataset.id = `o${Date.now().toString(36)}`;
         div.innerHTML = `
-          <input class="poll-opt" value="" placeholder="選項 ${n}" />
+          <input class="poll-opt" data-field="text" value="" placeholder="選項 ${n}" />
+          <input class="poll-opt-img" data-field="img" value="" placeholder="圖片 URL（可選）" style="flex:1; min-width:160px" />
           <button class="btn btn-small" data-act="addopt">＋</button>
         `;
         bar.appendChild(div);
+        // ensure only the last row keeps the add button
+        const addBtns = bar.querySelectorAll('[data-act="addopt"]');
+        addBtns.forEach((btn, idx) => {
+          if (idx < addBtns.length - 1) btn.remove();
+        });
       }
     });
 
@@ -1138,13 +1172,13 @@ export async function bootCMS(){
     await maybe(renderQuestions);
     await maybe(renderAssets);
   }
-    // DEV ONLY: expose helpers to the console safely
+  // DEV ONLY: expose helpers to the console safely
   if (typeof window !== 'undefined') {
     try {
       window.FB = FB;
       window.getCurrentEventId = getCurrentEventId;
     } catch (_) {}
-}
+  }
 }
 
 // Let other modules (like events_admin) trigger a full UI refresh

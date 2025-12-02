@@ -566,7 +566,6 @@ body:not(.tablet-mode)  #tabletView  { display: none !important; }
   font-weight: 900;
   color: rgba(0,0,0,.85);
   background: rgba(255, 255, 255, 0);
-  backdrop-filter: blur(2px);
 }
 #stageCountdown.is-active{ display:flex; }
 
@@ -657,6 +656,7 @@ body:not(.tablet-mode)  #tabletView  { display: none !important; }
   background-size: contain;           /* fit inside box, keep aspect */
   background-repeat: no-repeat;
   background-position: center;
+  object-fit: contain;
 }
 .banner-box{
   width: 100%;
@@ -697,11 +697,15 @@ body:not(.tablet-mode)  #tabletView  { display: none !important; }
   color:white;
   font-weight:800;              /* keep your strong label look */
   font-size:clamp(16px,2vw,26px);
+  text-shadow:0 2px 12px rgba(0,0,0,.45);
   
 }
 
 /* 此獎尚餘： — keep .stat pill but ensure white text */
-#prizeLeftInline.stat{ color:#fff; }
+#prizeLeftInline.stat{
+  color:#fff;
+  text-shadow:0 2px 12px rgba(0,0,0,.35);
+}
 
 /* If you previously hid .prize-left, unhide the new inline pill */
 .prize-left{ display:initial; } /* or remove any .prize-left { display:none } rule */
@@ -843,10 +847,16 @@ html, body { overflow-x:hidden; }
 #stageGrid.winners-4 { grid-template-columns: repeat(4, 1fr) !important; }
 #stageGrid.winners-5 { grid-template-columns: repeat(5, 1fr) !important; }
 
-/* 6–10 winners: always 5 per row (≈20% each) */
-#stageGrid.winners-6,
+/* 6 winners: 3 x 2 for balance */
+#stageGrid.winners-6 {
+  grid-template-columns: repeat(3, 1fr) !important;
+}
+/* 7–8 winners: 4 per row */
 #stageGrid.winners-7,
-#stageGrid.winners-8,
+#stageGrid.winners-8 {
+  grid-template-columns: repeat(4, 1fr) !important;
+}
+/* 9–10 winners: 5 per row */
 #stageGrid.winners-9,
 #stageGrid.winners-10 {
   grid-template-columns: repeat(5, 1fr) !important;
@@ -1081,4 +1091,56 @@ html, body { overflow-x:hidden; }
 .winners-10 .winner-card {
   flex: 0 0 22%;
   min-height: 16vh;
+}
+
+/* ==== Final overrides to normalize winner cards (CMS & Public) ==== */
+#cmsStage16x9 .stage-main #stageGrid,
+.is-public #stageGrid {
+  align-items: start;
+  justify-items: center;
+}
+
+#cmsStage16x9 .stage-main #stageGrid .winner-card,
+.is-public #stageGrid .winner-card {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 160px;
+  height: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 16px;
+  text-align: center;
+}
+
+#cmsStage16x9 .stage-main #stageGrid .winner-card .name,
+.is-public #stageGrid .winner-card .name {
+  font-weight: 900;
+  line-height: 1.1;
+  max-width: 100%;
+  white-space: normal;
+  text-overflow: unset;
+}
+
+#cmsStage16x9 .stage-main #stageGrid .winner-card .dept,
+.is-public #stageGrid .winner-card .dept {
+  max-width: 100%;
+  white-space: normal;
+}
+
+/* neutralize vh-based heights from earlier rules */
+#cmsStage16x9 .stage-main #stageGrid.winners-1 .winner-card,
+#cmsStage16x9 .stage-main #stageGrid.winners-2 .winner-card,
+#cmsStage16x9 .stage-main #stageGrid.winners-3 .winner-card,
+#cmsStage16x9 .stage-main #stageGrid.winners-4 .winner-card,
+#cmsStage16x9 .stage-main #stageGrid.winners-5 .winner-card,
+#cmsStage16x9 .stage-main #stageGrid.winners-6 .winner-card,
+#cmsStage16x9 .stage-main #stageGrid.winners-7 .winner-card,
+#cmsStage16x9 .stage-main #stageGrid.winners-8 .winner-card,
+#cmsStage16x9 .stage-main #stageGrid.winners-9 .winner-card,
+#cmsStage16x9 .stage-main #stageGrid.winners-10 .winner-card {
+  height: auto;
+  min-height: 160px;
+  flex: 1 1 auto;
 }

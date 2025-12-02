@@ -17,7 +17,7 @@
   <div class="bar" style="margin-left:auto"><button id="themeToggle" class="btn small">☀️ Normal Mode</button>
 <a class="btn" href="#" id="btnPublicBoard" role="button">Public Board ↗</a>
 <a class="btn" href="./tablet.html" target="_blank" role="button">Tablet View ↗</a>
-<a class="btn primary" href="./landing.html" target="_blank" role="button">Landing ↗</a>
+<a class="btn primary" id="btnLanding" href="#" role="button">Landing ↗</a>
 </div></div>
 </header>
 <main class="container" id="cmsView"><div class="cms-grid">
@@ -27,7 +27,7 @@
 <button class="nav-item" data-target="pageRoster">名單</button>
 <button class="nav-item" data-target="pagePrizes">獎品</button>
 <button class="nav-item" data-target="pageStageDraw">舞台抽獎</button>
-<button class="nav-item" data-target="pageQuestions">抽問</button>
+<!-- 抽問 tab hidden -->
 <button class="nav-item" data-target="pagePoll">投票</button>
 <button class="nav-item" data-target="pageStorage">素材/檔案</button>
 <button class="nav-item" data-target="pageEventsManage">活動管理</button>
@@ -51,6 +51,7 @@
   <!-- controls -->
   <div class="bar" style="gap:8px; flex-wrap:wrap">
     <input placeholder="搜尋姓名/部門/電話/代碼/座位..." id="searchGuest" />
+    <button id="btnAddManual" class="btn small">＋ 手動新增</button>
     <label style="margin-left:auto">每頁顯示
       <select id="pageSize">
         <option value="50" selected>50</option>
@@ -175,14 +176,19 @@
   <h3>投票</h3><div class="grid-2">
     <label>題目 
       <!-- Current Poll Picker -->
-<div class="card" style="margin-bottom:12px">
-  <div class="bar" style="gap:8px;flex-wrap:wrap">
-    <label class="muted">目前參與的問題：</label>
-    <select id="pollPicker" class="input" style="min-width:280px"></select>
-    <button id="btnSetCurrent" class="btn">設為目前問題</button>
-    <button id="btnShowPickerQR" class="btn">顯示此問題的 QR</button>
-  </div>
-</div>
+    <div class="card" style="margin-bottom:12px">
+      <div class="bar" style="gap:8px;flex-wrap:wrap">
+        <label class="muted">目前參與的問題：</label>
+        <select id="pollPicker" class="input" style="min-width:280px"></select>
+        <button id="btnSetCurrent" class="btn">設為目前問題</button>
+        <button id="btnShowPickerQR" class="btn">顯示此問題的 QR</button>
+        <button id="btnShowQRPublic" class="btn" style="background:#ffd84d;color:#000;font-weight:700">顯示到公眾畫面</button>
+        <button id="btnHideQRPublic" class="btn btn-secondary" style="background:#4caf50;color:#fff;font-weight:700">返回抽獎畫面</button>
+        <button id="btnPlayPollResults" class="btn" style="background:#ff7043;color:#fff;font-weight:700">播放結果動畫</button>
+        <button id="btnNextPollResult" class="btn" style="background:#ffb74d;color:#000;font-weight:700">下一步</button>
+        <button id="btnClearPollResult" class="btn" style="background:#9e9e9e;color:#000;font-weight:700">清除結果</button>
+      </div>
+    </div>
 
       <!-- Quick Compose -->
 <div class="card" style="margin-bottom:12px">
@@ -235,7 +241,7 @@
         <input id="assetLogoFile" type="file" accept="image/*">
       </label>
       <div class="muted" style="margin-top:4px;font-size:12px">
-        會優先使用上載的圖；如沒有上載則使用 URL。Logo 會自動等比縮放填入框內。
+        會優先使用上載的圖；如沒有上載則使用 URL。Logo 會自動等比縮放填入框內。最佳解析度：800×800 內，1:1 正方形。
       </div>
       <div style="margin-top:8px">
         <div class="muted" style="font-size:12px">預覽：</div>
@@ -250,11 +256,11 @@
         <input id="assetBannerUrl" placeholder="https://example.com/banner.jpg">
       </label>
       <label class="file" style="margin-top:8px">
-        <span>上載 Banner 圖片（覆蓋 URL）</span>
+        <span>上載 Banner 圖片（覆蓋 URL，建議 1920×600px 以內）</span>
         <input id="assetBannerFile" type="file" accept="image/*">
       </label>
       <div class="muted" style="margin-top:4px;font-size:12px">
-        會優先使用上載的圖；如沒有上載則使用 URL。
+        會優先使用上載的圖；如沒有上載則使用 URL。最佳解析度：1920×600 內，長方形橫幅。
       </div>
       <div style="margin-top:8px">
         <div class="muted" style="font-size:12px">預覽：</div>
@@ -269,11 +275,11 @@
         <input id="assetBackgroundUrl" placeholder="https://example.com/background.jpg">
       </label>
       <label class="file" style="margin-top:8px">
-        <span>上載背景圖（覆蓋 URL）</span>
+        <span>上載背景圖（覆蓋 URL，建議 1920×1080px 以內）</span>
         <input id="assetBackgroundFile" type="file" accept="image/*">
       </label>
       <div class="muted" style="margin-top:4px;font-size:12px">
-        Landing 頁優先用上載背景圖，其次使用 URL，如都沒有則退回到相片或 Banner。
+        Landing 頁優先用上載背景圖，其次使用 URL，如都沒有則退回到相片或 Banner。最佳解析度：1920×1080 內，16:9。
       </div>
       <div style="margin-top:8px">
         <div class="muted" style="font-size:12px">預覽：</div>

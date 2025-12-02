@@ -200,27 +200,18 @@ export async function performDraw(batchSize, hooks){
   drawState.animating = true;
 
   try{
+    if (skipCountdown && typeof window !== 'undefined') {
+      window.__skipCountdownFlag = true;
+    }
     if (!skipCountdown) {
       await countdown321(overlayEl);
     }
+
 
     const { batch } = await coreDrawBatch(
       Math.min(10, Math.max(1, Number(batchSize)||1))
     );
     drawState.lastBatch = batch || [];
-
-    // Hint public board to skip its countdown if requested
-    if (skipCountdown) {
-      try {
-        const eid = getCurrentEventId();
-        if (eid && FB?.patch) {
-          await FB.patch(`/events/${eid}/ui/stageState`, { skipCountdown: true });
-          await FB.patch(`/events/${eid}/ui`, { skipCountdown: true }); // public fallback
-        }
-      } catch (e) {
-        console.warn('[performDraw] skipCountdown flag patch failed', e);
-      }
-    }
 
     // render grid now
     if (typeof afterRender === 'function') {
@@ -254,10 +245,23 @@ export async function rerollOne(slotIndex, hooks){
   const cur = (prizes || []).find(p => p && p.id === curId);
   if (!cur || !Array.isArray(cur.winners) || !cur.winners[slotIndex]) return;
 
-  // Map slotIndex (on lastBatch) to its position in cur.winners (newest winners are at the end)
-  const batchLen = Array.isArray(drawState.lastBatch) ? drawState.lastBatch.length : 0;
-  const baseIdx = Math.max(0, cur.winners.length - batchLen);
-  const targetIdx = baseIdx + slotIndex;
+  // Try to map the clicked slot to the actual winners array using lastBatch
+  let targetIdx = -1;
+  const target = Array.isArray(drawState.lastBatch) ? drawState.lastBatch[slotIndex] : null;
+  if (target) {
+    // prefer the last occurrence (most recent) to avoid touching older duplicates
+    for (let i = cur.winners.length - 1; i >= 0; i--) {
+      const w = cur.winners[i];
+      if (w && w.name === target.name && (w.dept || '') === (target.dept || '')) {
+        targetIdx = i;
+        break;
+      }
+    }
+  }
+  if (targetIdx < 0) {
+    // fallback to the slot index if mapping failed
+    targetIdx = slotIndex;
+  }
   if (!cur.winners[targetIdx]) return;
 
   // Remove that exact winner and persist
@@ -282,7 +286,8 @@ export async function rerollOne(slotIndex, hooks){
   if (changed) await setPeople(eid, people);
 
   // Draw exactly ONE replacement and persist via core
-  const res = await coreDrawBatch(1);   // <-- fixed: use coreDrawBatch
+  const excludeKey = `${removed.name}||${removed.dept || ''}`;
+  const res = await coreDrawBatch(1, { excludeKeys: [excludeKey] });   // avoid picking the same person
   const replacement = (res && res.batch && res.batch[0]) ? res.batch[0] : null;
 
   // Log reroll (best-effort)
@@ -318,7 +323,8 @@ export async function clearScreenResults(gridEl){
   try {
     const eid = getCurrentEventId();
     if (eid && FB?.patch) {
-      await FB.patch(`/events/${eid}/ui`, { stageState: null });
+      await FB.patch(`/events/${eid}/ui/stageState`, null);
+      await FB.patch(`/events/${eid}/ui`, { skipCountdown: false });
     }
   } catch (e) {
     console.warn('[clearScreenResults] failed to clear public state', e);

@@ -77,6 +77,62 @@ function renderBars(poll){
   });
 }
 
+async function playResultsAnimation(poll){
+  const chart = document.getElementById('resultChart');
+  const wrap = document.getElementById('resultArea');
+  const status = document.getElementById('resultStatus');
+  if (!chart || !wrap) return;
+
+  const votes = poll.votes || {};
+  const opts = (poll.options || []).map(o => ({
+    id: o.id,
+    text: o.text || '',
+    img: o.img || '',
+    count: Number(votes[o.id] || 0)
+  }));
+
+  // sort ascending by votes (least first)
+  opts.sort((a,b)=>a.count - b.count);
+
+  wrap.classList.remove('hidden');
+  chart.innerHTML = '';
+  status.textContent = '播放結果動畫中…';
+
+  // build bars
+  opts.forEach((o, idx) => {
+    const bar = document.createElement('div');
+    bar.className = 'rBar';
+    bar.innerHTML = `
+      <div class="crown">👑</div>
+      <div class="rFillWrap"><div class="rFill" data-count="${o.count}"></div></div>
+      <div class="rLabel">${o.text}</div>
+      <div class="rCount">0 票</div>
+    `;
+    chart.appendChild(bar);
+  });
+
+  // animate one by one
+  const fills = Array.from(chart.querySelectorAll('.rFill'));
+  for (let i = 0; i < fills.length; i++) {
+    const fill = fills[i];
+    const count = Number(fill.dataset.count || 0);
+    const pct = opts[opts.length - 1].count ? Math.round((count / opts[opts.length - 1].count) * 100) : 0;
+    const bar = fill.closest('.rBar');
+    const countEl = bar?.querySelector('.rCount');
+    const crown = bar?.querySelector('.crown');
+
+    fill.style.height = '0';
+    fill.getBoundingClientRect(); // force reflow
+    fill.style.height = Math.max(8, pct * 2) + 'px'; // scale height
+    if (countEl) countEl.textContent = `${count} 票`;
+    if (i === fills.length - 1 && crown) crown.style.opacity = '1';
+
+    await new Promise(r => setTimeout(r, 900));
+  }
+
+  status.textContent = '動畫完畢。再次點擊可重播。';
+}
+
 async function getCurrentPollId(){
   // Prefer explicit poll in URL, else read ui.currentPollId
   if (pidFromUrl) return pidFromUrl;
@@ -101,6 +157,13 @@ async function refresh(){
   // QR uses vote link for this poll
   drawQR(voteLink(eid, pid));
   renderBars(poll);
+
+  // Results animation trigger
+  const trigger = ui.pollResultsTrigger || 0;
+  if (trigger && trigger !== window.__lastResultsTrigger) {
+    window.__lastResultsTrigger = trigger;
+    await playResultsAnimation(poll);
+  }
 
   // footer info
   $('#footLeft').textContent = ui.showNextPrize === false ? '' : (ui.nextPrizeLabel || '');

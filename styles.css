@@ -155,7 +155,7 @@ body.public-mode #publicView .stage{min-height:100vh;border-radius:0;border:none
 }
 
 #pageStage .winner-card .name {
-  font-size: clamp(28px, 3.2vw, 64px);
+  font-size: clamp(28px, 3.2vw, 32px);
 }
 #pageStage .winner-card .dept {
   font-size: clamp(14px, 1.8vw, 28px);
@@ -602,12 +602,12 @@ body:not(.tablet-mode)  #tabletView  { display: none !important; }
   padding: 16px; 
 }
 
-/* Tie the canvas size to its container, not the viewport */
-#cmsStage16x9.cms-stage{
-  aspect-ratio:16/9;
-  width: 100%;            /* ← fill the card’s content box */
-  max-width: 100%;        /* ← never exceed the column */
-  height: auto;           /* aspect-ratio drives height */
+/* Tie the canvas size to its container, not the viewport (CMS only) */
+body:not(.is-public) #cmsStage16x9.cms-stage{
+  aspect-ratio:16/12;           /* CMS: taller canvas */
+  width: 100%;
+  max-width: 100%;
+  height: auto;
 
   background:#0f1216;
   color:#111;
@@ -619,6 +619,16 @@ body:not(.tablet-mode)  #tabletView  { display: none !important; }
   grid-template-rows: 96px 88px 1fr 72px;  /* header / prize strip / winners / footer */
   gap: 8px;
   padding: 12px 16px;
+  box-sizing: border-box;
+}
+
+/* PUBLIC: keep stage sizing independent of CMS tweaks */
+.is-public #cmsStage16x9.cms-stage{
+  aspect-ratio: 16/9;
+  width: 100vw;
+  height: 90vh;
+  max-width: none;
+  padding: 16px 32px;
   box-sizing: border-box;
 }
 
@@ -907,7 +917,7 @@ html, body { overflow-x:hidden; }
 
 /* Winner name: old typography + keep single-line */
 #cmsStage16x9 .stage-main #stageGrid .winner-card .name{
-  font-size:clamp(42px, 4.5vw, 96px);
+  font-size:clamp(60px, 4.5vw, 90px);
   line-height:1.05;
   font-weight:1000;
   letter-spacing:.5px;
@@ -1114,6 +1124,13 @@ html, body { overflow-x:hidden; }
   text-align: center;
 }
 
+/* CMS: remove dark overlay from cards */
+body:not(.is-public) #cmsStage16x9 .stage-main #stageGrid .winner-card {
+  background: transparent !important;
+  border-color: rgba(255,255,255,.65);
+  box-shadow: 0 6px 14px rgba(255, 255, 255, 0.25);
+}
+
 #cmsStage16x9 .stage-main #stageGrid .winner-card .name,
 .is-public #stageGrid .winner-card .name {
   font-weight: 900;
@@ -1143,4 +1160,15 @@ html, body { overflow-x:hidden; }
   height: auto;
   min-height: 160px;
   flex: 1 1 auto;
+}
+
+/* CMS: enforce name larger than dept (override all earlier sizing) */
+body:not(.is-public) #cmsStage16x9 .stage-main #stageGrid .winner-card .name {
+  font-size: clamp(20px, 4vw, 32px) !important;
+  line-height: 1.1;
+  font-weight: 900;
+}
+body:not(.is-public) #cmsStage16x9 .stage-main #stageGrid .winner-card .dept {
+  font-size: clamp(18px, 2vw, 24px) !important;
+  line-height: 1.1;
 }

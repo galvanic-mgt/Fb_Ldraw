@@ -174,6 +174,109 @@
 .is-public #stageGrid.winners-9 .winner-card:nth-child(8) { grid-column: 3; }
 .is-public #stageGrid.winners-9 .winner-card:nth-child(9) { grid-column: 4; }
 
+/* PUBLIC: poll QR in grid area (replaces cards) */
+  .qr-panel {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  box-sizing: border-box;
+}
+.qr-box-inline {
+  background: rgba(0,0,0,.35);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 18px;
+  padding: 18px;
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+  color: #fff;
+  max-width: 560px;
+  width: 100%;
+}
+.qr-title {
+  font-size: clamp(20px, 2.5vw, 32px);
+  font-weight: 800;
+  text-align: center;
+}
+.qr-title span {
+  color: #ffd84d;
+}
+.qr-link {
+  word-break: break-all;
+  font-size: 12px;
+  opacity: .8;
+  text-align: center;
+}
+
+/* When showing poll QR, hide only the countdown; keep header/prize strip visible */
+.qr-mode #stageCountdown {
+  display: none !important;
+}
+.qr-mode .current-prize,
+.qr-mode #prizeLeftInline {
+  display: none !important;
+}
+
+/* Poll results mode (bar chart in grid) */
+.results-mode #stageCountdown {
+  display: none !important;
+}
+.results-mode .current-prize,
+.results-mode #prizeLeftInline {
+  display: none !important;
+}
+.results-chart {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  box-sizing: border-box;
+}
+.results-inner {
+  width: 100%;
+  max-width: 900px;
+  display: grid;
+  gap: 14px;
+}
+.results-title {
+  text-align: center;
+  font-size: clamp(20px, 2.6vw, 34px);
+  font-weight: 800;
+}
+.results-bars {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 14px;
+  align-items: end;
+  min-height: 320px;
+}
+.rBar {
+  position: relative;
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 14px;
+  padding: 12px;
+  background: rgba(0,0,0,.2);
+  display: grid;
+  gap: 8px;
+  align-items: end;
+  min-height: 220px;
+}
+.rFillWrap { width: 100%; height: 220px; display:flex; align-items:flex-end; }
+.rFill {
+  width: 100%;
+  height: 0;
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(255,216,77,.5), rgba(255,139,95,.8));
+  transition: height .8s ease;
+}
+.rLabel { text-align:center; font-weight:700; min-height:32px; white-space:normal; word-break:break-word; }
+.rCount { text-align:center; font-size:14px; opacity:.9; }
+.crown { position:absolute; top:-30px; left:50%; transform:translateX(-50%); opacity:0; transition:opacity .4s ease; }
+.results-status { text-align:center; font-size:14px; opacity:.8; }
+
 
 </style>
 
@@ -212,6 +315,7 @@
   <!-- These must come *before* our boot script so renderStageDraw exists -->
   <script type="module" src="./src/core_firebase.js"></script>
   <script type="module" src="./src/stage_prizes_firebase.js"></script>
+  <script src="./qrcode.min.js"></script>
 
   <!-- ✅ Then our boot script that calls renderStageDraw() -->
   <script type="module" src="./src/public_stage_boot.js"></script>

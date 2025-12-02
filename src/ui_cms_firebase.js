@@ -140,6 +140,18 @@ function ensureLandingQR(eid) {
   });
 }
 
+// Landing button in header: open event-specific landing
+function bindLandingButton(){
+  const btn = document.getElementById('btnLanding');
+  if (!btn) return;
+  btn.addEventListener('click', (e)=>{
+    e.preventDefault();
+    const eid = getCurrentEventId();
+    if (!eid) { alert('請先在左側選擇一個活動'); return; }
+    window.open(landingPublicBoardLink(eid), '_blank');
+  });
+}
+
 
 function pollPublicBoardLink(eid, pid) {
   const u = new URL(location.href);
@@ -468,6 +480,34 @@ function bindRoster(){
     const ok = confirm('確定要清空全部名單？此動作無法復原。');
     if(!ok) return;
     await setPeople(eid, []);
+    rosterState.page = 1;
+    await renderRoster();
+  });
+
+  // Manual add
+  document.getElementById('btnAddManual')?.addEventListener('click', async ()=>{
+    const eid = getCurrentEventId(); if(!eid) return;
+    const name = prompt('姓名：')?.trim();
+    if (!name) return;
+    const dept  = prompt('部門 / 描述（可留空）：')?.trim() || '';
+    const phone = prompt('電話（可留空）：')?.trim() || '';
+    const code  = prompt('代碼（可留空）：')?.trim() || '';
+    const table = prompt('枱號（可留空）：')?.trim() || '';
+    const seat  = prompt('座位（可留空）：')?.trim() || '';
+    const checkedIn = confirm('是否標記為「出席」？');
+
+    const people = await getPeople(eid);
+    people.push({
+      name,
+      dept,
+      phone,
+      code,
+      table,
+      seat,
+      checkedIn: !!checkedIn,
+      prize: ''
+    });
+    await setPeople(eid, people);
     rosterState.page = 1;
     await renderRoster();
   });
@@ -838,6 +878,11 @@ async function bindPollPicker(){
   const sel   = document.getElementById('pollPicker');
   const btnSet = document.getElementById('btnSetCurrent');
   const btnQR  = document.getElementById('btnShowPickerQR');
+  const btnShowPublic = document.getElementById('btnShowQRPublic');
+  const btnHidePublic = document.getElementById('btnHideQRPublic');
+  const btnPlayResults = document.getElementById('btnPlayPollResults');
+  const btnNextResults = document.getElementById('btnNextPollResult');
+  const btnClearResults = document.getElementById('btnClearPollResult');
   if (!sel) return;
 
   // Load polls + UI state (defensive, no optional chaining)
@@ -924,6 +969,92 @@ async function bindPollPicker(){
         copyBtn.addEventListener('click', async function(){
           try { await navigator.clipboard.writeText(link); alert('已複製投票連結'); } catch (e) {}
         });
+      }
+    };
+  }
+
+  if (btnHidePublic) {
+    btnHidePublic.onclick = async function(){
+      try {
+        if (window.FB && window.FB.patch) {
+          await window.FB.patch(`/events/${eid}/ui`, {
+            showPollQR: false
+          });
+        }
+        alert('已切換回抽獎畫面');
+      } catch (e) {
+        console.warn('[poll] hide QR public failed', e);
+      }
+    };
+  }
+
+  // "Show QR on public board" button
+  if (btnShowPublic) {
+    btnShowPublic.onclick = async function(){
+      const pid = sel.value;
+      if (!pid) return;
+      try {
+        if (window.FB && window.FB.patch) {
+          await window.FB.patch(`/events/${eid}/ui`, {
+            currentPollId: pid,
+            showPollQR: true
+          });
+        }
+        alert('已在公眾畫面顯示此 QR');
+      } catch (e) {
+        console.warn('[poll] show QR public failed', e);
+      }
+    };
+  }
+
+  // "Play results animation" button (public poll board)
+  if (btnPlayResults) {
+    btnPlayResults.onclick = async function(){
+      const pid = sel.value;
+      if (!pid) return;
+      try {
+        if (window.FB && window.FB.patch) {
+          await window.FB.patch(`/events/${eid}/ui`, {
+            currentPollId: pid,
+            showPollQR: false,
+            pollResultsTrigger: Date.now(),
+            pollResultsStep: 0
+          });
+        }
+        alert('已觸發公眾結果動畫');
+      } catch (e) {
+        console.warn('[poll] play results failed', e);
+      }
+    };
+  }
+
+  // Advance results animation step
+  if (btnNextResults) {
+    btnNextResults.onclick = async function(){
+      const pid = sel.value;
+      if (!pid) return;
+      try {
+        const ui = await window.FB.get(`/events/${eid}/ui`).catch(()=>({}));
+        const step = Number(ui?.pollResultsStep || 0) + 1;
+        await window.FB.patch(`/events/${eid}/ui`, { pollResultsStep: step });
+      } catch (e) {
+        console.warn('[poll] next results failed', e);
+      }
+    };
+  }
+
+  // Clear results animation
+  if (btnClearResults) {
+    btnClearResults.onclick = async function(){
+      try {
+        await window.FB.patch(`/events/${eid}/ui`, {
+          pollResultsTrigger: null,
+          pollResultsStep: 0,
+          showPollQR: false
+        });
+        alert('已清除結果模式，恢復抽獎畫面');
+      } catch (e) {
+        console.warn('[poll] clear results failed', e);
       }
     };
   }
@@ -1153,6 +1284,7 @@ export async function bootCMS(){
   await maybe(bindQuestions);
   await maybe(bindAssets);
   await maybe(bindPolls);
+  await maybe(bindLandingButton);
   try { await renderPollManager(); } catch (e) { console.error(e); }
 
 

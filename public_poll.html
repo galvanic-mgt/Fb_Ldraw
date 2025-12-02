@@ -31,6 +31,16 @@
     .brandRow{display:grid; grid-template-columns: 120px 1fr; gap:12px; align-items:center; margin-bottom:12px;}
     .brandLogo{width:120px; height:120px; border-radius:18px; background:#0f1625; border:1px solid var(--border); display:grid; place-items:center; font-weight:700; letter-spacing:1px; background-size:contain; background-position:center; background-repeat:no-repeat;}
     .brandBanner{width:100%; min-height:120px; border-radius:18px; background:#0f1625; border:1px solid var(--border); display:grid; place-items:center; color:rgba(255,255,255,.6); background-size:cover; background-position:center;}
+    /* Result animation (vertical bars) */
+    .resultsWrap{display:grid; gap:14px;}
+    .resultChart{display:grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); align-items:end; gap:12px; min-height:320px;}
+    .rBar{position:relative; background:rgba(255,255,255,.08); border:1px solid var(--border); border-radius:12px; padding:10px; display:flex; flex-direction:column; align-items:center; gap:8px;}
+    .rFillWrap{width:100%; height:240px; display:flex; align-items:flex-end;}
+    .rFill{width:100%; background:linear-gradient(180deg, rgba(255,216,77,.4), rgba(255,139,95,.6)); border-radius:10px; height:0; transition:height .8s ease;}
+    .rLabel{font-size:14px; text-align:center; min-height:36px;}
+    .rCount{font-weight:700; margin-top:4px;}
+    .crown{position:absolute; top:-32px; font-size:28px; opacity:0; transition:opacity .4s ease;}
+    .resultsStatus{font-size:14px; opacity:.8;}
   </style>
 </head>
 <body>
@@ -50,6 +60,10 @@
       </div>
       <h1 id="pollQ" class="title">投票</h1>
       <div id="bars" class="bars"></div>
+      <div id="resultArea" class="resultsWrap hidden">
+        <div id="resultChart" class="resultChart"></div>
+        <div id="resultStatus" class="resultsStatus"></div>
+      </div>
       <div id="total" class="meta"></div>
       <!-- Optional: an empty area you can overlay like the lucky draw canvas if desired -->
       <canvas id="fxCanvas" class="fit hidden"></canvas>

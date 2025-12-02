@@ -108,8 +108,11 @@ export async function setCurrentPrize(prizeId) {
 }
 
 /* ----------------- draw core ----------------- */
-export async function drawBatch(n = 1) {
+export async function drawBatch(n = 1, opts = {}) {
   try {
+    const skipCountdownFlag = typeof window !== 'undefined' && window.__skipCountdownFlag === true;
+    if (typeof window !== 'undefined') window.__skipCountdownFlag = false;
+
     const eid = getCurrentEventId?.();
     if (!eid) throw new Error('尚未選擇活動');
 
@@ -133,9 +136,14 @@ export async function drawBatch(n = 1) {
       prizes.flatMap(p => (p?.winners || []).map(w => `${w.name}||${w.dept || ''}`))
     );
 
-    const pool = people.filter(p =>
-      p && p.checkedIn && !winnersSet.has(`${p.name}||${p.dept || ''}`)
-    );
+    const excludeKeys = new Set((opts.excludeKeys || []).filter(Boolean));
+    const pool = people.filter(p => {
+      if (!p || !p.checkedIn) return false;
+      const key = `${p.name}||${p.dept || ''}`;
+      if (winnersSet.has(key)) return false;
+      if (excludeKeys.has(key)) return false;
+      return true;
+    });
     if (pool.length === 0) throw new Error('沒有可抽名單（請檢查出席狀態或已有得獎紀錄）');
 
     const want = Math.max(1, Math.min(Number(n) || 1, 10, need, pool.length));
@@ -166,6 +174,7 @@ export async function drawBatch(n = 1) {
           stageState: {
             currentPrizeId: curId,
             currentBatch: Number(n) || 1,
+            skipCountdown: skipCountdownFlag || undefined,
             winners: picks.map(w => ({
               name: w.name,
               dept: w.dept || '',

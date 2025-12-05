@@ -12,9 +12,9 @@ function getEventId() {
 /**
  * Load logo / banner / background from RTDB and apply to the stage.
  * Uses EXACTLY the same priority as landing.js:
- *   logo   : logoData   > logo
- *   banner : bannerData > banner
- *   bg     : backgroundData > background > first photos[] > banner
+ *   logo   : logo
+ *   banner : banner
+ *   bg     : background > first photos[] > banner
  */
 async function refreshAssets(eid) {
   if (!eid) return;
@@ -23,22 +23,16 @@ async function refreshAssets(eid) {
     logo,
     banner,
     background,
-    photos,
-    logoData,
-    bannerData,
-    backgroundData
+    photos
   ] = await Promise.all([
     FB.get(`/events/${eid}/logo`).catch(() => null),
     FB.get(`/events/${eid}/banner`).catch(() => null),
     FB.get(`/events/${eid}/background`).catch(() => null),
-    FB.get(`/events/${eid}/photos`).catch(() => null),
-    FB.get(`/events/${eid}/logoData`).catch(() => null),
-    FB.get(`/events/${eid}/bannerData`).catch(() => null),
-    FB.get(`/events/${eid}/backgroundData`).catch(() => null),
+    FB.get(`/events/${eid}/photos`).catch(() => null)
   ]);
 
-  const finalLogo   = logoData   || logo   || '';
-  const finalBanner = bannerData || banner || '';
+  const finalLogo   = logo   || '';
+  const finalBanner = banner || '';
 
   const logoEl   = document.getElementById('stageLogo');
   const bannerEl = document.getElementById('stageBanner');
@@ -134,8 +128,12 @@ async function boot() {
   await refreshCurrentPrize(eid);
 
   // Poll updates
-  setInterval(() => refreshAssets(eid), 5000);
   setInterval(() => refreshCurrentPrize(eid), 1500);
+
+  // Allow manual/on-demand asset refresh (reduces bandwidth)
+  if (typeof window !== 'undefined') {
+    window.refreshPublicAssets = () => refreshAssets(eid);
+  }
 }
 
 boot();

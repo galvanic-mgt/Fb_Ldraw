@@ -14,8 +14,8 @@ async function hydrateBrand() {
   if (!eid) return;
   try {
     const assets = await getAssets(eid);
-    const logoSrc = assets.logoData || assets.logo || '';
-    const bannerSrc = assets.bannerData || assets.banner || '';
+    const logoSrc = assets.logo || '';
+    const bannerSrc = assets.banner || '';
 
     const logoEl = $('#voteLogo');
     if (logoEl) {

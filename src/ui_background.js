@@ -30,21 +30,11 @@ export async function applyBackground(eid, {
 
   // Prefer explicit background, else fall back to photos/banners
   const assets = await getAssets(eid).catch(() => ({}));
-  const {
-    backgroundData,
-    background,
-    photos,
-    bannerData,
-    banner
-  } = assets || {};
+  const { background, photos, banner } = assets || {};
 
-  let src = backgroundData || background || '';
-  if (!src && Array.isArray(photos) && photos.length) {
-    src = photos[0];
-  }
-  if (!src) {
-    src = bannerData || banner || '';
-  }
+  let src = background || '';
+  if (!src && Array.isArray(photos) && photos.length) src = photos[0];
+  if (!src) src = banner || '';
 
   if (src) {
     const gradient = dim > 0 ? `linear-gradient(rgba(0,0,0,${dim}), rgba(0,0,0,${dim})), ` : '';

@@ -2,9 +2,8 @@
 // Standalone file: uses Firebase Realtime Database REST API directly, no imports.
 
 // === CONFIG ===
-// NOTE: this matches your src/config.js.
-// If you ever change it there, remember to change it here too.
-const FIREBASE_BASE = "https://luckydrawpolls-default-rtdb.asia-southeast1.firebasedatabase.app";
+// NOTE: this should match src/config.js.
+const FIREBASE_BASE = "https://eva-lucky-draw-default-rtdb.asia-southeast1.firebasedatabase.app";
 
 // Helper to build URLs like `${FIREBASE_BASE}/events/e123/info.json`
 function dbUrl(path) {
@@ -90,37 +89,22 @@ async function loadEventHeader(eid) {
   }
 
   // Load assets for logo / banner / background.
-  // Existing fields you already have in RTDB:
-  //   /events/{eid}/logo   (string URL)
-  //   /events/{eid}/banner (string URL)
-  //   /events/{eid}/photos (array of URL strings)
-  //
-  // Optional NEW fields if later you add file-upload support and store data URLs:
-  //   /events/{eid}/logoData
-  //   /events/{eid}/bannerData
-  //   /events/{eid}/backgroundData
   const [
     logoUrl,
     bannerUrl,
-    photos,
-    logoData,
-    bannerData,
-    bgData
+    photos
   ] = await Promise.all([
     dbGet(`/events/${eid}/logo`),
     dbGet(`/events/${eid}/banner`),
-    dbGet(`/events/${eid}/photos`),
-    dbGet(`/events/${eid}/logoData`),
-    dbGet(`/events/${eid}/bannerData`),
-    dbGet(`/events/${eid}/backgroundData`)
+    dbGet(`/events/${eid}/photos`)
   ]);
 
   const bannerEl = document.getElementById("banner");
   const logoEl   = document.getElementById("logo");
 
-  const finalLogo   = logoData   || logoUrl   || "";
-  const finalBanner = bannerData || bannerUrl || "";
-  let   finalBg     = bgData     || "";
+  const finalLogo   = logoUrl   || "";
+  const finalBanner = bannerUrl || "";
+  let   finalBg     = "";
 
   if (!finalBg) {
     if (Array.isArray(photos) && photos.length > 0) {

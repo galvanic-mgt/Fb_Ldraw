@@ -584,6 +584,10 @@ body:not(.tablet-mode)  #tabletView  { display: none !important; }
   background: rgba(255, 255, 255, 0);
 }
 #stageCountdown.is-active{ display:flex; }
+#pageStageDraw #stageCountdown,
+body:not(.is-public) #stageCountdown {
+  background-color: transparent !important;
+}
 
 /* Bottom controls stay inside the frame */
 .cms-stage .stage-controls {
@@ -758,13 +762,14 @@ body:not(.is-public) #cmsStage16x9.cms-stage{
   position:absolute; inset:0;
   z-index:1;                         /* behind the cards */
   display:none;                      /* JS toggles */
-  display:flex; align-items:center; justify-content:center;
+  align-items:center; justify-content:center;
   font-size: clamp(64px, 12vw, 200px);
   font-weight: 900;
   color: rgba(191, 255, 0, 0.615);
-  background-color: #000000ad;
+  background-color: transparent;
   pointer-events:none;               /* don't block clicks */
 }
+#stageCountdown.is-active{ display:flex; }
 
 
 .winner-card .btn-reroll{
@@ -1144,7 +1149,11 @@ html, body { overflow-x:hidden; }
 body:not(.is-public) #cmsStage16x9 .stage-main #stageGrid .winner-card {
   background: transparent !important;
   border-color: rgba(255,255,255,.65);
-  box-shadow: 0 6px 14px rgba(255, 255, 255, 0.25);
+  box-shadow: none;
+}
+/* CMS: keep grid area clear (no dark overlay) */
+body:not(.is-public) #cmsStage16x9 .stage-main #stageGrid {
+  background: transparent !important;
 }
 
 #cmsStage16x9 .stage-main #stageGrid .winner-card .name,

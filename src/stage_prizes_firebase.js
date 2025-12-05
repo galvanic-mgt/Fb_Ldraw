@@ -6,6 +6,7 @@ import {
   getPrizes, setPrizes,
   getCurrentPrizeIdRemote, setCurrentPrizeIdRemote,
 } from './core_firebase.js';
+import { FB } from './fb.js';
 
 /* ----------------- helpers ----------------- */
 export function prizeLeftLocal(prize) {
@@ -26,6 +27,7 @@ function pickUnique(arr, n) {
 function ensurePrizeShape(p) {
   return {
     id: p.id,
+    no: p.no || '',
     name: p.name || '新獎項',
     quota: Math.max(0, Number(p.quota || 0)),
     winners: Array.isArray(p.winners) ? p.winners : [],
@@ -177,6 +179,7 @@ function mapPrizeHeader(headers) {
     return -1;
   };
   return {
+    no:    find(['no','序號','號碼','編號','number']),
     id:    find(['id', '編號']),
     name:  find(['name', '獎品', '獎項', '名稱', 'prize']),
     quota: find(['quota', '名額', '數量'])
@@ -198,10 +201,11 @@ export async function importPrizesCSV(text) {
     const pick = (i) => (i >= 0 && i < cols.length) ? cols[i] : '';
     const name = String(pick(idx.name) || '').trim();
     if (!name) return null;
+    const no    = String(pick(idx.no) || '').trim();
     const quotaRaw = pick(idx.quota);
     const quota = Math.max(0, Number(quotaRaw || 1)) || 1;
     const id = String(pick(idx.id) || '').trim() || ('p' + Math.random().toString(36).slice(2, 8));
-    return ensurePrizeShape({ id, name, quota, winners: [] });
+    return ensurePrizeShape({ id, no, name, quota, winners: [] });
   }).filter(Boolean);
 
   await setPrizes(eid, list);
@@ -293,20 +297,19 @@ export async function drawBatch(n = 1, opts = {}) {
 
     // 2) Single, clean sync to RTDB for public board
     try {
-      if (window.FB?.patch) {
-        await window.FB.patch(`/events/${eid}/ui`, {
-          stageState: {
-            currentPrizeId: curId,
-            currentBatch: Number(n) || 1,
-            skipCountdown: skipCountdownFlag || undefined,
-            winners: picks.map(w => ({
-              name: w.name,
-              dept: w.dept || '',
-              time: now
-            }))
-          }
-        });
-      }
+      await FB.patch(`/events/${eid}/ui`, {
+        skipCountdown: skipCountdownFlag || undefined,
+        stageState: {
+          currentPrizeId: curId,
+          currentBatch: Number(n) || 1,
+          skipCountdown: skipCountdownFlag || undefined,
+          winners: picks.map(w => ({
+            name: w.name,
+            dept: w.dept || '',
+            time: now
+          }))
+        }
+      });
     } catch (e) {
       console.warn('[Draw Sync] Unable to write ui.stageState', e);
     }

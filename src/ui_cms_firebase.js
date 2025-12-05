@@ -254,7 +254,7 @@ const personKey = (p)=>{
 
 // ====== Prize table state (sorting only) ======
 const prizeState = {
-  sortBy: 'name',
+  sortBy: 'no',
   sortDir: 'asc' // 'asc' | 'desc'
 };
 // ===========================================================
@@ -641,6 +641,7 @@ async function renderPrizes(){
   const list = Array.isArray(prizes) ? prizes.slice() : [];
   const { sortBy, sortDir } = prizeState;
   const val = (p, key)=>{
+    if (key === 'no') return (p?.no || '').toString().toLowerCase();
     if (key === 'quota') return Number(p?.quota || 0);
     if (key === 'used')  return (p?.winners || []).length;
     return (p?.[key] || '').toString().toLowerCase();
@@ -666,6 +667,7 @@ async function renderPrizes(){
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td><input type="radio" name="curpr" ${curId===p.id?'checked':''}></td>
+      <td>${p.no||''}</td>
       <td>${p.name||''}</td>
       <td>${p.quota||1}</td>
       <td>${used}</td>
@@ -686,6 +688,7 @@ async function renderPrizes(){
       await renderPrizes();
     };
     tr.querySelector('[data-edit]').onclick = async ()=>{
+      const newNo   = prompt('更新獎品編號：', p.no || '')?.trim() || '';
       const newName = prompt('更新獎品名稱：', p.name || '')?.trim();
       if (!newName) return;
       const newQuotaRaw = prompt('更新名額（數字）：', String(p.quota || 1))?.trim();
@@ -696,7 +699,7 @@ async function renderPrizes(){
         const ok = confirm(`名額將改為 ${newQuota}，確定要修改嗎？`);
         if (!ok) return;
       }
-      await updatePrize({ id: p.id, name: newName, quota: newQuota });
+      await updatePrize({ id: p.id, name: newName, quota: newQuota, no: newNo });
       await renderPrizes();
     };
     tbody.appendChild(tr);
@@ -715,29 +718,18 @@ async function renderPrizes(){
 
 document.getElementById('addPrize')?.addEventListener('click', async ()=>{
     const name = document.getElementById('newPrizeName')?.value.trim();
+    const no   = document.getElementById('newPrizeNo')?.value.trim();
     const q    = Math.max(0, Number(document.getElementById('newPrizeQuota')?.value || 1));
     if (!name) return;
-    await addPrize({ name, quota: q });   // <<< pass object
+    await addPrize({ name, quota: q, no });
     document.getElementById('newPrizeName').value = '';
+    const noEl=document.getElementById('newPrizeNo'); if(noEl) noEl.value='';
     document.getElementById('newPrizeQuota').value = '1';
     await renderPrizes();
   });
 
 async function renderQuestions(){const list=await getQuestions(getCurrentEventId());const ul=document.getElementById('questionList');ul.innerHTML='';list.forEach(q=>{const li=document.createElement('li');li.textContent=q;ul.appendChild(li);});}
 function bindQuestions(){document.getElementById('btnAddQuestion')?.addEventListener('click',async()=>{const eid=getCurrentEventId();const val=document.getElementById('newQuestion')?.value.trim();if(!val)return;const list=await getQuestions(eid);list.push(val);await setQuestions(eid,list);document.getElementById('newQuestion').value='';await renderQuestions();});}
-function fileToDataURL(file) {
-  return new Promise((resolve, reject) => {
-    if (!file) {
-      resolve('');
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = (e) => resolve(e.target.result);
-    reader.onerror = (e) => reject(e);
-    reader.readAsDataURL(file);
-  });
-}
-
 async function renderAssets(){
   const eid = getCurrentEventId();
   if (!eid) return;
@@ -746,23 +738,21 @@ async function renderAssets(){
     banner: '',
     logo: '',
     background: '',
-    photos: [],
-    bannerData: '',
-    logoData: '',
-    backgroundData: ''
+    photos: []
   }));
 
   const $ = (id) => document.getElementById(id);
+  const str = (v) => (typeof v === 'string' ? v : '');
 
   // Fill URL inputs
-  if ($('assetLogoUrl'))        $('assetLogoUrl').value        = assets.logo || '';
-  if ($('assetBannerUrl'))      $('assetBannerUrl').value      = assets.banner || '';
-  if ($('assetBackgroundUrl'))  $('assetBackgroundUrl').value  = assets.background || '';
+  if ($('assetLogoUrl'))        $('assetLogoUrl').value        = str(assets.logo);
+  if ($('assetBannerUrl'))      $('assetBannerUrl').value      = str(assets.banner);
+  if ($('assetBackgroundUrl'))  $('assetBackgroundUrl').value  = str(assets.background);
 
   // Previews: prefer Data URL, fallback to URL
-  const logoSrc       = assets.logoData       || assets.logo       || '';
-  const bannerSrc     = assets.bannerData     || assets.banner     || '';
-  const backgroundSrc = assets.backgroundData || assets.background || '';
+  const logoSrc       = str(assets.logo);
+  const bannerSrc     = str(assets.banner);
+  const backgroundSrc = str(assets.background);
 
   if ($('assetLogoPreview')) {
     if (logoSrc) {
@@ -852,33 +842,16 @@ function bindAssets(){
     const bannerUrl     = ($('assetBannerUrl')?.value || '').trim();
     const backgroundUrl = ($('assetBackgroundUrl')?.value || '').trim();
 
-    const logoFile       = $('assetLogoFile')?.files?.[0] || null;
-    const bannerFile     = $('assetBannerFile')?.files?.[0] || null;
-    const backgroundFile = $('assetBackgroundFile')?.files?.[0] || null;
-
     // Keep existing photos; we only change photos through add/delete controls
     const current = await getAssets(eid);
     const photos  = Array.isArray(current.photos) ? current.photos.slice() : [];
 
-    // Read files as Data URL (only if user selected something)
-    const [logoData, bannerData, backgroundData] = await Promise.all([
-      fileToDataURL(logoFile),
-      fileToDataURL(bannerFile),
-      fileToDataURL(backgroundFile),
-    ]);
-
-    const payload = {
-      logo: logoUrl,
-      banner: bannerUrl,
-      background: backgroundUrl,
+    await setAssets(eid, {
+      logo: logoUrl || '',
+      banner: bannerUrl || '',
+      background: backgroundUrl || '',
       photos
-    };
-
-    if (logoData)       payload.logoData       = logoData;
-    if (bannerData)     payload.bannerData     = bannerData;
-    if (backgroundData) payload.backgroundData = backgroundData;
-
-    await setAssets(eid, payload);
+    });
     alert('已儲存素材設定');
     await renderAssets();
   });

@@ -9,6 +9,8 @@ import {
   renderRerollLog as renderRerollLogCore,
   fitWinnerCardText
 } from './stage_draw_logic.js';
+import { bindStageGridDelegation } from './stage_draw_logic.js';
+import { FB } from './fb.js';
 
 // remove: cellHTML(), renderBatchGrid(), renderRerollLog()
 
@@ -32,7 +34,10 @@ function showCountdown(){
 }
 function hideCountdown(){
   const el = document.getElementById('stageCountdown');
-  if (el) el.classList.remove('is-active');
+  if (el) {
+    el.classList.remove('is-active');
+    el.style.display = '';
+  }
 }
 
 function renderBatchGrid(gridEl, batch, mode){
@@ -62,6 +67,21 @@ async function renderRerollLog(){
 export async function renderStageDraw(mode){
   const eid = getCurrentEventId();
   if(!eid) return;
+
+  // CMS: live-poll stageState so CMS updates when tablet/public draw
+  if (mode === 'cms') {
+    if (renderStageDraw._cmsTimer) clearInterval(renderStageDraw._cmsTimer);
+    const poll = async ()=>{
+      try{
+        const state = await FB.get(`/events/${eid}/ui/stageState`).catch(()=>null);
+        if (!state || !state.winners) return;
+        const winnersArray = Array.isArray(state.winners) ? state.winners : Object.values(state.winners);
+        renderBatchGridCore(document.getElementById('stageGrid'), winnersArray, 'cms');
+        fitWinnerCardText(document.getElementById('stageGrid'), { nameMax: 140, deptMax: 70 });
+      }catch(e){/*ignore*/}
+    };
+    renderStageDraw._cmsTimer = setInterval(poll, 1200);
+  }
 
   const logoEl    = document.getElementById('stageLogo');
   const bannerEl  = document.getElementById('stageBanner');
@@ -101,6 +121,10 @@ export async function renderStageDraw(mode){
   if (mode !== 'public') {
     const fitOpts = { nameMax: 140, deptMax: 70 };
     fitWinnerCardText(gridEl, fitOpts);
+  }
+  // bind reroll buttons for CMS/tablet
+  if (mode === 'cms' || mode === 'tablet') {
+    bindStageGridDelegation(mode);
   }
 
   // Totals updater
@@ -191,6 +215,7 @@ if (exportBtn) exportBtn.onclick = ()=> exportCurrentWinners();
       const active = document.querySelector('#drawBtns [data-batch].active');
       const n = active ? Number(active.getAttribute('data-batch')) : 1;
 
+      hideCountdown(); // ensure overlay stays hidden for instant draws
       await performDraw(n, {
         overlayEl,
         gridEl,

@@ -16,32 +16,22 @@ export async function setCurrentPrizeIdRemote(id,pid){return await FB.put(`/even
 export async function getQuestions(id){return (await FB.get(`/events/${id}/questions`))||[];}
 export async function setQuestions(id,arr){return await FB.put(`/events/${id}/questions`,arr||[]);}
 export async function getAssets(id){
-  const [
-    banner,
-    logo,
-    background,
-    photos,
-    bannerData,
-    logoData,
-    backgroundData,
-  ] = await Promise.all([
+  const clean = (v)=> typeof v === 'string'
+    ? v.trim()
+    : (v && typeof v.url === 'string' ? v.url.trim() : '');
+
+  const [bannerRaw, logoRaw, backgroundRaw, photos] = await Promise.all([
     FB.get(`/events/${id}/banner`),
     FB.get(`/events/${id}/logo`),
     FB.get(`/events/${id}/background`),
-    FB.get(`/events/${id}/photos`),
-    FB.get(`/events/${id}/bannerData`),
-    FB.get(`/events/${id}/logoData`),
-    FB.get(`/events/${id}/backgroundData`),
+    FB.get(`/events/${id}/photos`)
   ]);
 
   return {
-    banner: banner || '',
-    logo: logo || '',
-    background: background || '',
-    photos: photos || [],
-    bannerData: bannerData || '',
-    logoData: logoData || '',
-    backgroundData: backgroundData || '',
+    banner: clean(bannerRaw),
+    logo: clean(logoRaw),
+    background: clean(backgroundRaw),
+    photos: Array.isArray(photos) ? photos : []
   };
 }
 
@@ -50,13 +40,9 @@ export async function setAssets(id, assets){
     banner,
     logo,
     background,
-    photos,
-    bannerData,
-    logoData,
-    backgroundData,
+    photos
   } = assets || {};
 
-  // URLs
   if (banner !== undefined) {
     await FB.put(`/events/${id}/banner`, banner || '');
   }
@@ -67,20 +53,8 @@ export async function setAssets(id, assets){
     await FB.put(`/events/${id}/background`, background || '');
   }
 
-  // Photos array
   if (photos !== undefined) {
     await FB.put(`/events/${id}/photos`, photos || []);
-  }
-
-  // Data URLs (base64)
-  if (bannerData !== undefined) {
-    await FB.put(`/events/${id}/bannerData`, bannerData || '');
-  }
-  if (logoData !== undefined) {
-    await FB.put(`/events/${id}/logoData`, logoData || '');
-  }
-  if (backgroundData !== undefined) {
-    await FB.put(`/events/${id}/backgroundData`, backgroundData || '');
   }
 }
 

@@ -143,7 +143,7 @@ export function renderBatchGrid(gridEl, batch, mode){
   });
 
   // Fit text to each card after render (tighter caps for CMS)
-  const fitOpts = (mode === 'cms') ? { nameMax: 90, deptMax: 32 } : {};
+  const fitOpts = (mode === 'cms' || mode === 'tablet') ? { nameMax: 140, deptMax: 70 } : {};
   fitWinnerCardText(gridEl, fitOpts);
 }
 
@@ -173,11 +173,11 @@ export async function renderRerollLog(){
    Grid click delegation — reroll only the clicked slot
    Call once after the CMS page mounts
 ============================================================ */
-let _gridBound = false;
+let _gridBoundMode = null;
 export function bindStageGridDelegation(mode='cms'){
-  if (_gridBound) return;
   const gridEl = document.getElementById('stageGrid');
   if (!gridEl) return;
+  if (_gridBoundMode === mode) return;
 
   gridEl.addEventListener('click', async (ev) => {
     const b = ev.target.closest('.btn-reroll');
@@ -195,7 +195,7 @@ export function bindStageGridDelegation(mode='cms'){
     }
   });
 
-  _gridBound = true;
+  _gridBoundMode = mode;
 }
 
 /* ============================================================

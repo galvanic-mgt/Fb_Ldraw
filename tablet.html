@@ -11,7 +11,7 @@
     body.is-public { position: relative; overflow: hidden; }
     #publicBg { position:fixed; inset:0; z-index:0; background:#0b0d12; background-size:cover; background-position:center; filter:brightness(.85); }
     #publicRoot { position: relative; z-index: 1; }
-    .is-public #cmsStage16x9 { background: transparent; box-shadow: none; width: 100vw; height: 100vh; display:flex; flex-direction:column; gap:48px; padding:16px 32px; box-sizing:border-box; }
+    .is-public #cmsStage16x9 { background: transparent; box-shadow: none; width: 100vw; height: 100vh; display:flex; flex-direction:column; gap:32px; padding:24px 32px; box-sizing:border-box; justify-content:center; }
     .is-public .card, .is-public .subpage, .is-public .wrap, .is-public .container { width: auto; max-width: none; margin: 0; padding: 0; }
     .is-public .stage-row { width: 100%; margin: 0; }
     .is-public .current-prize{ font-size: clamp(24px, 3vw, 100px); white-space: normal; word-break: break-word; line-height: 1.1; }
@@ -19,8 +19,31 @@
     .is-public .prize-strip { flex: 0 0 auto !important; height: auto; padding: 0; margin: 0; }
     .is-public .prize-strip .bar { padding: 4px 24px !important; height: auto; }
     .is-public .prize-strip .spacer { flex: 0 0 auto !important; height: 0 !important; }
-    .is-public #stageLogo { width: clamp(220px, 20vw, 340px); height: clamp(160px, 22vh, 320px); max-height: 30vh; background-size: contain !important; background-repeat: no-repeat; background-position: center; margin-right: 24px; margin-left: 32px; overflow: hidden; position: relative; }
-    .is-public #stageBanner { height: clamp(160px, 22vh, 320px); max-height: 30vh; width: 100%; background-size: contain; background-repeat: no-repeat; background-position: center; border-radius: 0; overflow: hidden; position: relative; }
+  .is-public #stageLogo {
+    width: clamp(18vw, 20vw, 28vw);
+    aspect-ratio: 1 / 1;
+    max-height: 22vh;
+    background-size: contain !important;
+    background-repeat: no-repeat;
+    background-position: center;
+    margin-right: 16px;
+    margin-left: 16px;
+    overflow: hidden;
+    position: relative;
+    object-fit: contain;
+    align-self: start;
+  }
+  .is-public #stageBanner {
+    height: clamp(18vh, 24vh, 34vh);
+    max-height: 34vh;
+    width: 100%;
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: center;
+    border-radius: 0px;
+    overflow: hidden;
+    position: relative;
+  }
     .is-public .header { position: relative; display: grid; grid-template-columns: auto 1fr; gap: 20px; padding: 16px 20px; border-radius: 18px; border: 1px solid rgba(255,255,255,.14); overflow: hidden; align-items: center; }
     .is-public .header::after { content: ""; position: absolute; inset: 0; background: rgba(0, 0, 0, 0.5); mix-blend-mode: multiply; pointer-events: none; }
     .is-public .header > * { position: relative; z-index: 1; }
@@ -51,7 +74,11 @@
   <div id="publicBg"></div>
   <div id="publicRoot">
     <main class="container">
-      <div class="bar" style="gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <div class="bar" style="gap:12px;flex-wrap:wrap;justify-content:center;align-items:center;margin-bottom:16px">
+        <label class="bar" style="gap:6px;align-items:center">
+          抽獎項目
+          <select id="tabletPrizeSelect" class="input" style="min-width:200px"></select>
+        </label>
         <div id="drawBtns" class="btns">
           批次：
           <button class="btn small" data-batch="1">1</button>
@@ -100,28 +127,54 @@
           <div id="totalWon" class="stat">已得獎：<span id="stageTotalWon">—</span></div>
         </div>
       </div>
-      <div id="rerollLogPanel" class="reroll-log"></div>
+     
     </main>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
   <script type="module">
-    import { setCurrentEventId } from './src/core_firebase.js';
+    import { setCurrentEventId, getPrizes, getCurrentPrizeIdRemote } from './src/core_firebase.js';
     import { performDraw, clearScreenResults } from './src/stage_draw_logic.js';
     import { renderStageDraw } from './src/stage_draw_ui.js';
     import { renderBatchGrid as renderBatchGridCore, fitWinnerCardText } from './src/stage_draw_logic.js';
+    import { setCurrentPrize } from './src/stage_prizes_firebase.js';
+    import { FB } from './src/fb.js';
 
     const u = new URL(location.href);
     const eid = u.searchParams.get('event');
     if (eid) setCurrentEventId(eid);
 
-    // render public-style stage (assets + winners handled by public_stage_boot/state)
+    // render public-style stage (assets handled by public_stage_boot)
     renderStageDraw('public');
 
     const overlayEl = document.getElementById('stageCountdown');
     const gridEl    = document.getElementById('stageGrid');
 
-    const fitOpts = { nameMax: 140, deptMax: 70 };
+    const fitOpts = { nameMax: 160, deptMax: 90 };
+
+    // prize dropdown
+    async function populatePrizeSelect(){
+      const sel = document.getElementById('tabletPrizeSelect');
+      if (!sel || !eid) return;
+      const [prizes, curId] = await Promise.all([
+        getPrizes(eid).catch(()=>[]),
+        getCurrentPrizeIdRemote(eid).catch(()=>null)
+      ]);
+      sel.innerHTML = '';
+      (prizes || []).forEach(p=>{
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = p.no ? `${p.no} — ${p.name||''}` : (p.name||'');
+        if (p.id === curId) opt.selected = true;
+        sel.appendChild(opt);
+      });
+      if (!sel.value && prizes[0]) sel.value = prizes[0].id;
+    }
+    document.getElementById('tabletPrizeSelect')?.addEventListener('change', async (e)=>{
+      const pid = e.target.value;
+      if (!pid) return;
+      try { await setCurrentPrize(pid); } catch(_){}
+    });
 
     // batch buttons toggle active state
     document.querySelectorAll('#drawBtns [data-batch]')?.forEach(btn=>{
@@ -146,6 +199,7 @@
           fitWinnerCardText(gridEl, fitOpts);
         }
       });
+      await populatePrizeSelect();
     });
 
     document.getElementById('btnRollInstant')?.addEventListener('click', async ()=>{
@@ -159,13 +213,30 @@
           fitWinnerCardText(gridEl, fitOpts);
         }
       });
+      await populatePrizeSelect();
     });
 
     document.getElementById('btnClearScreen')?.addEventListener('click', async ()=>{
       await clearScreenResults(gridEl);
     });
+
+    await populatePrizeSelect();
+
+    async function syncStageState(){
+      try{
+        if (!eid) return;
+        const state = await FB.get(`/events/${eid}/ui/stageState`).catch(()=>null);
+        if (!state || !state.winners) return;
+        const winnersArray = Array.isArray(state.winners) ? state.winners : Object.values(state.winners);
+        renderBatchGridCore(document.getElementById('stageGrid'), winnersArray, 'tablet');
+        fitWinnerCardText(document.getElementById('stageGrid'), fitOpts);
+      }catch(_){}
+    }
+
+    // initial sync + poll stageState to stay in sync (use tablet mode to keep reroll buttons)
+    await syncStageState();
+    setInterval(syncStageState, 1000);
   </script>
   <script type="module" src="./src/public_stage_boot.js"></script>
-  <script type="module" src="./src/public_stage_state.js"></script>
 </body>
 </html>

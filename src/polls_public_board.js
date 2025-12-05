@@ -174,8 +174,8 @@ async function refresh(){
   // brand + background
   try {
     const assets = await getAssets(eid);
-    const logoSrc = assets.logoData || assets.logo || '';
-    const bannerSrc = assets.bannerData || assets.banner || '';
+    const logoSrc = assets.logo || '';
+    const bannerSrc = assets.banner || '';
     const logoEl = $('#boardLogo');
     const bannerEl = $('#boardBanner');
     if (logoEl) {
@@ -201,6 +201,4 @@ async function refresh(){
     console.warn('[poll board] brand/background load failed', e);
   }
   await refresh();
-  // polling loop for simplicity; swap for onValue if you later use SDK
-  setInterval(refresh, 1500);
 })();

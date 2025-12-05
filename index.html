@@ -166,6 +166,7 @@
   <h3>獎品 / 抽獎</h3>
   <div class="bar" style="margin-bottom:8px;flex-wrap:wrap;gap:8px">
     <input id="newPrizeName" placeholder="獎品名稱"/>
+    <input id="newPrizeNo" placeholder="編號" style="width:120px"/>
     <label>名額 <input type="number" id="newPrizeQuota" value="1" min="1"/></label>
     <button id="addPrize" class="btn" type="button">+ 新增</button>
     <span class="muted" style="font-size:12px">可手動新增或匯入 CSV</span>
@@ -179,6 +180,7 @@
    <thead>
      <tr>
        <th style="width:90px">使用中</th>
+       <th data-sortable="true" data-key="no" style="width:80px">編號</th>
        <th data-sortable="true" data-key="name">獎品名稱</th>
        <th data-sortable="true" data-key="quota" style="width:100px">名額</th>
        <th data-sortable="true" data-key="used" style="width:100px">已得獎</th>
@@ -253,13 +255,6 @@
       <label>Logo URL
         <input id="assetLogoUrl" placeholder="https://example.com/logo.png">
       </label>
-      <label class="file" style="margin-top:8px">
-        <span>上載 Logo 圖片（覆蓋 URL，建議 800×800px 以內）</span>
-        <input id="assetLogoFile" type="file" accept="image/*">
-      </label>
-      <div class="muted" style="margin-top:4px;font-size:12px">
-        會優先使用上載的圖；如沒有上載則使用 URL。Logo 會自動等比縮放填入框內。最佳解析度：800×800 內，1:1 正方形。
-      </div>
       <div style="margin-top:8px">
         <div class="muted" style="font-size:12px">預覽：</div>
         <img id="assetLogoPreview" class="photo" style="max-width:100%;display:none" alt="Logo 預覽">
@@ -272,13 +267,6 @@
       <label>Banner URL
         <input id="assetBannerUrl" placeholder="https://example.com/banner.jpg">
       </label>
-      <label class="file" style="margin-top:8px">
-        <span>上載 Banner 圖片（覆蓋 URL，建議 1920×600px 以內）</span>
-        <input id="assetBannerFile" type="file" accept="image/*">
-      </label>
-      <div class="muted" style="margin-top:4px;font-size:12px">
-        會優先使用上載的圖；如沒有上載則使用 URL。最佳解析度：1920×600 內，長方形橫幅。
-      </div>
       <div style="margin-top:8px">
         <div class="muted" style="font-size:12px">預覽：</div>
         <img id="assetBannerPreview" class="photo" style="max-width:100%;display:none" alt="Banner 預覽">
@@ -291,13 +279,6 @@
       <label>背景 URL
         <input id="assetBackgroundUrl" placeholder="https://example.com/background.jpg">
       </label>
-      <label class="file" style="margin-top:8px">
-        <span>上載背景圖（覆蓋 URL，建議 1920×1080px 以內）</span>
-        <input id="assetBackgroundFile" type="file" accept="image/*">
-      </label>
-      <div class="muted" style="margin-top:4px;font-size:12px">
-        Landing 頁優先用上載背景圖，其次使用 URL，如都沒有則退回到相片或 Banner。最佳解析度：1920×1080 內，16:9。
-      </div>
       <div style="margin-top:8px">
         <div class="muted" style="font-size:12px">預覽：</div>
         <img id="assetBackgroundPreview" class="photo" style="max-width:100%;display:none" alt="背景預覽">

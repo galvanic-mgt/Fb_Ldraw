@@ -73,6 +73,15 @@ async function loadEventHeader(eid) {
   if (trainBlock)   trainBlock.style.display   = hasTrain ? '' : 'none';
   if (parkingBlock) parkingBlock.style.display = hasParking ? '' : 'none';
   if ($("evNotes"))     $("evNotes").textContent    = info.notes    || "";
+  // Dynamic labels for check-in
+  const labelPhone = info.labelPhone || "電話";
+  const labelDept  = info.labelDept  || "代號";
+  const titleEl = document.getElementById("checkinTitle");
+  const labelEl = document.getElementById("checkinLabel");
+  const inputEl = document.getElementById("codeDigits");
+  if (titleEl) titleEl.textContent = `到場報到（輸入${labelPhone}或${labelDept}）`;
+  if (labelEl) labelEl.textContent = `${labelPhone} / ${labelDept}`;
+  if (inputEl) inputEl.placeholder = `請輸入你的${labelPhone}或${labelDept}`;
 
   if ($("mapBtn")) {
     const url = info.mapUrl || "";

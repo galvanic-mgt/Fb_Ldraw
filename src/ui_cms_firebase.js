@@ -1,5 +1,5 @@
 import { listEvents, createEvent, setCurrentEventId, getCurrentEventId, getEventInfo, saveEventInfo,
-         getPeople, setPeople, getPrizes, getCurrentPrizeIdRemote, setCurrentPrizeIdRemote,
+         getPeople, setPeople, getPrizes, setPrizes, getCurrentPrizeIdRemote, setCurrentPrizeIdRemote,
          getQuestions, setQuestions, getAssets, setAssets, getPolls, setPoll, upsertEventMeta } from './core_firebase.js';
 import { addPrize, removePrize, setCurrentPrize, handlePrizeImportCSV, clearAllPrizes, updatePrize } from './stage_prizes_firebase.js';
 import { handleImportCSV, exportCSV } from './roster_firebase.js';
@@ -151,6 +151,18 @@ function bindLandingButton(){
     window.open(landingPublicBoardLink(eid), '_blank');
   });
 }
+function bindExternalLinks(){
+  const pub = document.getElementById('btnPublicBoard');
+  const tab = document.querySelector('a[href$="tablet.html"]');
+  const sync = ()=>{
+    const eid = getCurrentEventId();
+    if (!eid) return;
+    if (pub) pub.href = publicBoardLink(eid);
+    if (tab) tab.href = tabletLink(eid);
+  };
+  sync();
+  window.addEventListener('popstate', sync);
+}
 
 
 function pollPublicBoardLink(eid, pid) {
@@ -163,6 +175,18 @@ function landingPublicBoardLink(eid) {
   const u = new URL(location.href);
   // same folder as index.html, but go to landing.html
   u.pathname = (u.pathname.replace(/[^/]+$/, '') || '/') + 'landing.html';
+  u.search = `?event=${encodeURIComponent(eid)}`;
+  return u.href;
+}
+function publicBoardLink(eid) {
+  const u = new URL(location.href);
+  u.pathname = (u.pathname.replace(/[^/]+$/, '') || '/') + 'public.html';
+  u.search = `?event=${encodeURIComponent(eid)}`;
+  return u.href;
+}
+function tabletLink(eid) {
+  const u = new URL(location.href);
+  u.pathname = (u.pathname.replace(/[^/]+$/, '') || '/') + 'tablet.html';
   u.search = `?event=${encodeURIComponent(eid)}`;
   return u.href;
 }
@@ -465,13 +489,18 @@ function renderRow(tr, p, idx, mode){
       if (!ok) return;
       const eidNow = getCurrentEventId();
       if (!eidNow) return;
-      const key = personKey(p);
-      const wKey = w => w?.phone ? `phone:${w.phone}` : `${w?.name||''}||${w?.dept||''}`;
+      const keyPhone = (p.phone || '').trim();
+      const keyND = `${(p.name||'').trim()}||${(p.dept||'').trim()}`;
+      const wKey = w => w?.phone ? `phone:${(w.phone||'').trim()}` : `${(w?.name||'').trim()}||${(w?.dept||'').trim()}`;
       const prizes = await getPrizes(eidNow);
       let changed = false;
       (prizes || []).forEach(pr=>{
         const before = Array.isArray(pr.winners) ? pr.winners.length : 0;
-        pr.winners = (pr.winners || []).filter(w => wKey(w) !== key);
+        pr.winners = (pr.winners || []).filter(w=>{
+          const phoneMatch = keyPhone && (w?.phone||'').trim() === keyPhone;
+          const ndMatch    = `${(w?.name||'').trim()}||${(w?.dept||'').trim()}` === keyND;
+          return !phoneMatch && !ndMatch;
+        });
         if (pr.winners.length !== before) changed = true;
       });
       if (changed) await setPrizes(eidNow, prizes);
@@ -1475,6 +1504,7 @@ export async function bootCMS(){
   await maybe(bindAssets);
   await maybe(bindPolls);
   await maybe(bindLandingButton);
+  await maybe(bindExternalLinks);
   try { await renderPollManager(); } catch (e) { console.error(e); }
 
 

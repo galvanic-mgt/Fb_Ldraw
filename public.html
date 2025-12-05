@@ -90,9 +90,9 @@
 }
 /* PUBLIC VIEW — Logo */
 .is-public #stageLogo {
-    width: 300px;        /* adjust this */
-    height: 300px;       /* match banner height */
-    max-height: 300px;   /* cap to banner height */
+    width: clamp(220px, 20vw, 340px);
+    height: clamp(160px, 22vh, 320px);  /* responsive: % of viewport */
+    max-height: 15vh;                   /* cap by percentage */
     background-size: contain !important;
     background-repeat: no-repeat;
     background-position: center;
@@ -104,7 +104,8 @@
 
 /* PUBLIC VIEW — Banner */
 .is-public #stageBanner {
-    height: 300px;        /* adjust this */
+    height: clamp(160px, 22vh, 320px);  /* responsive: % of viewport */
+    max-height: 15vh;                  /* cap by percentage */
     width: 100%;          /* let it hog the right side */
     background-size: contain;
     background-repeat: no-repeat;

@@ -15,8 +15,8 @@
 <div id="loginGate" class="overlay" style="display:none"><form id="loginForm" class="card" style="min-width:320px; background:#121a2b; padding:16px"><h3 style="margin-top:0">登入</h3><label>帳號 <input id="loginUser" placeholder="admin"/></label><label>密碼 <input id="loginPass" type="password" placeholder="admin"/></label><div class="bar" style="margin-top:12px"><button class="btn primary" type="submit">進入</button></div></form></div>
 <header><div class="container row"><div class="tabs"><button class="btn primary active" type="button">後台 CMS</button></div>
   <div class="bar" style="margin-left:auto"><button id="themeToggle" class="btn small">☀️ Normal Mode</button>
-<a class="btn" href="#" id="btnPublicBoard" role="button">Public Board ↗</a>
-<a class="btn" href="./tablet.html" target="_blank" role="button">Tablet View ↗</a>
+<a class="btn btn-public" href="#" id="btnPublicBoard" role="button">Public Board ↗</a>
+<a class="btn btn-tablet" href="./tablet.html" target="_blank" role="button">Tablet View ↗</a>
 <a class="btn primary" id="btnLanding" href="#" role="button">Landing ↗</a>
 </div></div>
 </header>
@@ -133,7 +133,8 @@
   <div class="bar">
     <!-- keep the current prize as-is or also make it a .stat if you want identical look -->
     <div id="stageCurrentPrize" class="stat current-prize">
-      現正抽獎：<span id="stagePrizeName">—</span>
+      <span class="prize-label">現正抽獎：</span>
+      <span class="prize-name" id="stagePrizeName">—</span>
     </div>
 
     <!-- make 此獎尚餘 use the SAME .stat class as 總人數尚餘 -->
@@ -304,7 +305,36 @@
 </section>
 <section class="card subpage" id="pageEventsManage" style="display:none"><h3>活動管理</h3><p>在左側「活動清單」可新增活動、切換活動。</p><div id="eventsAdmin"></div>
 </section>
-<section class="card subpage" id="pageUsers" style="display:none"><h3>使用者</h3><p>現階段使用本機覆蓋登入畫面（無 Firebase Auth）。</p></section>
+<section class="card subpage" id="pageUsers" style="display:none">
+  <h3>使用者 / 角色</h3>
+  <div class="bar" style="gap:8px;flex-wrap:wrap;align-items:flex-end">
+    <div>
+      <label>名稱 <input id="userName" placeholder="使用者名稱"></label>
+    </div>
+    <div>
+      <label>角色
+        <select id="userRole">
+          <option value="master">Master（全部功能）</option>
+          <option value="roster">名單管理（僅名單頁）</option>
+        </select>
+      </label>
+    </div>
+    <button id="btnAddUser" class="btn">+ 新增</button>
+  </div>
+
+  <div style="margin-top:12px">
+    <h4>使用者列表</h4>
+    <table class="fullwidth">
+      <thead><tr><th>名稱</th><th>角色</th><th>操作</th></tr></thead>
+      <tbody id="userRows"></tbody>
+    </table>
+  </div>
+
+  <div style="margin-top:12px">
+    <h4>目前登入角色</h4>
+    <select id="activeUser" style="min-width:200px"></select>
+  </div>
+</section>
 </section></div></main>
 <script src="./qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>

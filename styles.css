@@ -23,6 +23,68 @@ header{position:sticky;top:0;background:linear-gradient(180deg,rgba(11,15,26,.95
 .container{max-width:1900px;width:100%;margin:0 auto;padding:14px 16px}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 .card{background:var(--card);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:14px}
+
+/* Light / normal mode overrides */
+body.theme-light{
+  --bg: #f7f9fc;
+  --card: #ffffff;
+  --muted: #4c5566;
+  color: #111;
+  background: #f7f9fc;
+}
+body.theme-light header{
+  background:linear-gradient(180deg,rgba(255,255,255,.96),rgba(247,249,252,.92));
+  border-bottom:1px solid #d9e3f0;
+}
+body.theme-light .card,
+body.theme-light .sidebar,
+body.theme-light .event-item{
+  background:#ffffff;
+  border:1px solid #d9e3f0;
+  color:#111;
+  box-shadow:0 8px 20px rgba(0,0,0,.04);
+}
+body.theme-light .nav-item{ background:#f2f5fa; border:1px solid #d9e3f0; color:#0f1a2f; }
+body.theme-light .nav-item.active{ outline:2px solid #3b82f6; background:#e8f0ff; }
+body.theme-light input,
+body.theme-light select,
+body.theme-light textarea,
+body.theme-light button{
+  background:#ffffff;
+  color:#0f1a2f;
+  border:1px solid #d9e3f0;
+}
+body.theme-light .event-meta{ color:#4b5563; } /* event ID text darker */
+body.theme-light .btn{ background:#f0f4fb; color:#0f1a2f; border:1px solid #d9e3f0; }
+body.theme-light .primary{ background:#3b82f6!important; color:#fff!important; border:none; }
+body.theme-light .stat{ background:#f3f6fb; border:1px solid #dbe4f2; color:#0f1a2f; }
+body.theme-light .current-prize{ color:#0f1a2f; text-shadow:none; }
+body.theme-light #prizeLeftInline.stat{ color:#0f1a2f; text-shadow:none; }
+
+/* Tablet/Public launcher buttons */
+.btn-public, .btn-tablet{
+  background:#2e7be0;
+  color:#fff;
+  border:1px solid #1f66bd;
+}
+/* Tablet gets turquoise */
+.btn-tablet{ background:#14b8a6; border:1px solid #0f9c8d; }
+body.theme-light .btn-public{ background:#2563eb; border:1px solid #1d4ed8; color:#fff; }
+body.theme-light .btn-tablet{ background:#008979; border:1px solid #0f9c8d; color:#fff; }
+
+/* Header public/tablet buttons even without special class */
+#btnPublicBoard,
+a[href$="tablet.html"]{
+  background:#2e7be0;
+  color:#fff !important;
+  border:1px solid #1f66bd;
+}
+body.theme-light #btnPublicBoard,
+body.theme-light a[href$="tablet.html"]{
+  background:#8002ba;
+  color:#fff !important;
+  border:1px solid #1d4ed8;
+}
 input,button,select,textarea{padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.15);background:#0e1626;color:#eef}
 textarea{resize:vertical}
 input[type="number"]{width:90px}
@@ -112,6 +174,11 @@ body.public-mode #publicView .stage{min-height:100vh;border-radius:0;border:none
 .table { width:100%; border-collapse:separate; border-spacing:0 8px }
 .table th, .table td { padding:10px 12px; text-align:left }
 .table tr { background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12) }
+
+/* User list (使用者列表) spacing */
+#pageUsers table { width:100%; border-collapse:separate; border-spacing:0 8px; }
+#pageUsers th, #pageUsers td { padding:12px 16px; text-align:left; }
+#pageUsers tr { background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); }
 
 
 /* ===== Embedded stage inside CMS (抽獎舞台) — single consolidated rule set ===== */
@@ -718,7 +785,7 @@ body:not(.is-public) #cmsStage16x9.cms-stage{
   white-space:nowrap; /* keep on one line */
 }
 
-/* 現正抽獎： — plain text (remove frame) */
+/* 現正抽獎： — label + value on separate column so wrapped lines align nicely */
 .current-prize{
   background:none;
   border:0;
@@ -728,7 +795,17 @@ body:not(.is-public) #cmsStage16x9.cms-stage{
   font-weight:800;              /* keep your strong label look */
   font-size:clamp(16px,2vw,26px);
   text-shadow:0 2px 12px rgba(0,0,0,.45);
-  
+  display:flex;
+  align-items:flex-start;
+  gap:8px;
+  white-space:normal;
+}
+.current-prize .prize-label{ white-space:nowrap; }
+.current-prize .prize-name{
+  display:block;
+  white-space:normal;
+  word-break:break-word;
+  line-height:1.15;
 }
 
 /* 此獎尚餘： — keep .stat pill but ensure white text */

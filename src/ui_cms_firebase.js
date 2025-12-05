@@ -252,6 +252,254 @@ const personKey = (p)=>{
   return phone ? `phone:${phone}` : `${name}||${dept}`;
 };
 
+// ====== Simple user/role manager (local storage, 2 roles, credentials, allowed events) ======
+const ROLE_MASTER = 'master';
+const ROLE_ROSTER = 'roster';
+const ACTIVE_KEY = 'cms-active-user';
+const SESSION_KEY = 'cms-session-ok';
+let usersCache = [];
+const DEFAULT_USER = { id:'u-master', name:'Admin', role:ROLE_MASTER, username:'administrator', password:'administrator', events:[] };
+
+function normalizeUser(u = {}){
+  const events = Array.isArray(u.events) ? u.events : [];
+  return {
+    id: (u.id || '').toString(),
+    name: (u.name || '').toString(),
+    role: (u.role || '').toString() || ROLE_ROSTER,
+    username: (u.username || '').toString(),
+    password: (u.password || '').toString(),
+    events: events.map(e => (e || '').toString()).filter(Boolean)
+  };
+}
+
+async function loadUsersFromDB(){
+  try {
+    const data = await FB.get('/users') || {};
+    usersCache = Object.entries(data)
+      .map(([id, u])=> normalizeUser({ id, ...u }))
+      .filter(u=>u && u.id);
+  } catch (e) {
+    usersCache = [];
+  }
+  const hasDefault = usersCache.some(u => u.id === DEFAULT_USER.id || u.username === DEFAULT_USER.username);
+  if (!hasDefault) {
+    usersCache = [...usersCache, DEFAULT_USER];
+    try { await FB.put(`/users/${DEFAULT_USER.id}`, { name:DEFAULT_USER.name, role:DEFAULT_USER.role, username:DEFAULT_USER.username, password:DEFAULT_USER.password, events:DEFAULT_USER.events }); } catch(_) {}
+  }
+  if (!usersCache.length) {
+    usersCache = [DEFAULT_USER];
+  }
+}
+async function saveUserToDB(user){
+  const clean = normalizeUser(user);
+  if (!clean.id) return;
+  await FB.put(`/users/${clean.id}`, {
+    name: clean.name,
+    role: clean.role,
+    username: clean.username,
+    password: clean.password,
+    events: clean.events
+  });
+  await loadUsersFromDB();
+}
+async function deleteUserFromDB(id){
+  await FB.put(`/users/${id}`, null);
+  await loadUsersFromDB();
+}
+function getActiveUser(){
+  const id = localStorage.getItem(ACTIVE_KEY);
+  const found = usersCache.find(u => u.id === id);
+  return found || { id:'', name:'', role: '', events: [] };
+}
+function setActiveUser(id){
+  const exists = usersCache.some(u => u.id === id);
+  if (exists) localStorage.setItem(ACTIVE_KEY, id || '');
+  else localStorage.removeItem(ACTIVE_KEY);
+  applyRoleGuard();
+}
+async function ensureUsersLoaded(){
+  if (!usersCache.length) await loadUsersFromDB();
+}
+function requireMasterPassword(){
+  const active = getActiveUser();
+  if (!active?.id) { alert('請先登入 Master 帳號'); return false; }
+  if (active.role !== ROLE_MASTER) { alert('只有 Master 可以變更使用者'); return false; }
+  const pwd = prompt('請輸入 Master 密碼以繼續：')?.trim();
+  if (pwd !== (active.password || '')) { alert('密碼不正確'); return false; }
+  return true;
+}
+
+function applyRoleGuard(){
+  const user = getActiveUser();
+  const role = user?.role || '';
+  document.body.dataset.role = role;
+
+  const allowAll = role === ROLE_MASTER;
+  document.querySelectorAll('#cmsNav .nav-item').forEach(btn=>{
+    const target = btn.dataset.target;
+    if (!allowAll && target && !['pageRoster','pageUsers'].includes(target)) {
+      btn.style.display = 'none';
+    } else {
+      btn.style.display = '';
+    }
+  });
+
+  // Hide pages for roster-only role
+  if (!allowAll) {
+    document.querySelectorAll('.subpage').forEach(sec=>{
+      if (!['pageRoster','pageUsers'].includes(sec.id)) sec.style.display = 'none';
+    });
+    const rosterBtn = document.querySelector('#cmsNav .nav-item[data-target="pageRoster"]');
+    rosterBtn?.classList.add('active');
+    show('pageRoster');
+  } else {
+    document.querySelectorAll('#cmsNav .nav-item').forEach(btn=> btn.style.display='');
+  }
+}
+
+function renderUsersUI(){
+  const tbody = document.getElementById('userRows');
+  const sel = document.getElementById('activeUser');
+  if (!tbody || !sel) return;
+  const users = usersCache;
+  const active = getActiveUser().id;
+
+  tbody.innerHTML = '';
+  if (!users.length) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = '<td colspan="4" class="muted">尚未建立使用者，請使用預設帳號登入：administrator / administrator</td>';
+    tbody.appendChild(tr);
+  }
+  users.forEach(u=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${u.name || ''}<br><small>${u.username || ''}</small></td>
+      <td>${u.role === ROLE_MASTER ? 'Master' : '名單管理'}</td>
+      <td>${(u.events||[]).length ? u.events.join(', ') : '全部'}</td>
+      <td>
+        <button class="btn small" data-edit="${u.id}">編輯</button>
+        <button class="btn small danger" data-del="${u.id}">刪除</button>
+      </td>`;
+    tr.querySelector('[data-edit]')?.addEventListener('click', async ()=>{
+      if (!requireMasterPassword()) return;
+      const name = prompt('名稱：', u.name || '')?.trim();
+      if (!name) return;
+      const username = prompt('登入帳號：', u.username || '')?.trim();
+      if (!username) return;
+      const password = prompt('登入密碼：', u.password || '')?.trim();
+      if (!password) return;
+      const role = prompt('角色（master / roster）：', u.role || ROLE_ROSTER)?.trim() || ROLE_ROSTER;
+      const eventsRaw = prompt('允許的活動 ID（用逗號分隔，留空=全部）：', (u.events||[]).join(','));
+      const events = eventsRaw ? eventsRaw.split(',').map(s=>s.trim()).filter(Boolean) : [];
+      usersCache = usersCache.map(x => x.id === u.id ? { ...x, name, username, password, role, events } : x);
+      try {
+        await saveUserToDB(usersCache.find(x=>x.id===u.id));
+        renderUsersUI();
+        applyRoleGuard();
+      } catch (err) {
+        console.error('[users] edit failed', err);
+        alert('無法儲存使用者，請確認權限或規則設定。');
+      }
+    });
+    tr.querySelector('[data-del]')?.addEventListener('click', async ()=>{
+      if (!requireMasterPassword()) return;
+      try {
+        await deleteUserFromDB(u.id);
+        if (active === u.id) setActiveUser(usersCache[0]?.id || '');
+        renderUsersUI();
+        applyRoleGuard();
+      } catch (err) {
+        console.error('[users] delete failed', err);
+        alert('無法刪除使用者，請確認權限或規則設定。');
+      }
+    });
+    tbody.appendChild(tr);
+  });
+
+  sel.innerHTML = '';
+  users.forEach(u=>{
+    const opt = document.createElement('option');
+    opt.value = u.id;
+    opt.textContent = `${u.name} (${u.role === ROLE_MASTER ? 'Master' : '名單'})`;
+    if (u.id === active) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  sel.onchange = ()=> setActiveUser(sel.value);
+  if (!active && users[0]) {
+    sel.value = '';
+  }
+}
+
+function bindUsers(){
+  document.getElementById('btnAddUser')?.addEventListener('click', async ()=>{
+    await ensureUsersLoaded();
+    if (!requireMasterPassword()) return;
+    const name = document.getElementById('userName')?.value.trim();
+    const role = document.getElementById('userRole')?.value || ROLE_ROSTER;
+    if (!name) return;
+    const username = prompt('設定登入帳號：')?.trim();
+    const password = prompt('設定登入密碼：')?.trim();
+    if (!username || !password) return;
+    const eventsRaw = prompt('允許的活動 ID（用逗號分隔，留空=全部）：','');
+    const events = eventsRaw ? eventsRaw.split(',').map(s=>s.trim()).filter(Boolean) : [];
+    const id = 'u-' + Math.random().toString(36).slice(2,8);
+    const newUser = normalizeUser({ id, name, role, username, password, events });
+    usersCache = [...usersCache, newUser];
+    try {
+      await saveUserToDB(newUser);
+    } catch (err) {
+      console.error('[users] add failed', err);
+      alert('無法新增使用者，請確認權限或規則設定。');
+      return;
+    }
+    document.getElementById('userName').value = '';
+    renderUsersUI();
+    applyRoleGuard();
+  });
+}
+
+// Simple login using stored users (RTDB-backed)
+function bindLogin(){
+  const gate = document.getElementById('loginGate');
+  const form = document.getElementById('loginForm');
+  if (!gate || !form) return;
+  const userInput = document.getElementById('loginUser');
+  const passInput = document.getElementById('loginPass');
+  const doLogin = async (u, p)=>{
+    await loadUsersFromDB();
+    let found = usersCache.find(x => x.username === u && x.password === p);
+    // fallback: if they enter the default credentials, re-seed the default account and use it
+    if (!found && u === DEFAULT_USER.username && p === DEFAULT_USER.password) {
+      try { await FB.put(`/users/${DEFAULT_USER.id}`, { name:DEFAULT_USER.name, role:DEFAULT_USER.role, username:DEFAULT_USER.username, password:DEFAULT_USER.password, events:DEFAULT_USER.events }); } catch(_){}
+      await loadUsersFromDB();
+      found = usersCache.find(x => x.username === u && x.password === p);
+    }
+    if (found) {
+      setActiveUser(found.id);
+      sessionStorage.setItem(SESSION_KEY, '1');
+      gate.style.display = 'none';
+      renderUsersUI();
+      applyRoleGuard();
+      renderAll?.();
+      return true;
+    }
+    alert('帳號或密碼錯誤');
+    return false;
+  };
+  form.addEventListener('submit', (e)=>{
+    e.preventDefault();
+    const u = userInput?.value?.trim() || '';
+    const p = passInput?.value?.trim() || '';
+    if (!u || !p) return;
+    doLogin(u,p);
+  });
+  // always require login unless a valid session exists
+  if (sessionStorage.getItem(SESSION_KEY) === '1' && getActiveUser()?.id) {
+    gate.style.display = 'none';
+  } else {
+    gate.style.display = 'flex';
+  }
+}
 // ====== Prize table state (sorting only) ======
 const prizeState = {
   sortBy: 'no',
@@ -260,12 +508,15 @@ const prizeState = {
 // ===========================================================
 
 let bootEventsAdmin = ()=>{};
-try {
-  const mod = await import('./events_admin.js');
-  bootEventsAdmin = mod.bootEventsAdmin;
-} catch(e) {
-  console.warn('events_admin.js failed to load:', e);
-}
+// load optional admin module without top-level await
+(async ()=>{
+  try {
+    const mod = await import('./events_admin.js');
+    bootEventsAdmin = mod.bootEventsAdmin;
+  } catch(e) {
+    console.warn('events_admin.js failed to load:', e);
+  }
+})();
 const $=(s)=>document.querySelector(s);
 function show(targetId){
   document.querySelectorAll('.subpage').forEach(s=> s.style.display='none');
@@ -641,7 +892,11 @@ async function renderPrizes(){
   const list = Array.isArray(prizes) ? prizes.slice() : [];
   const { sortBy, sortDir } = prizeState;
   const val = (p, key)=>{
-    if (key === 'no') return (p?.no || '').toString().toLowerCase();
+    if (key === 'no') {
+      const raw = (p?.no || '').toString().trim();
+      const n = Number(raw);
+      return isNaN(n) ? raw.toLowerCase() : n;
+    }
     if (key === 'quota') return Number(p?.quota || 0);
     if (key === 'used')  return (p?.winners || []).length;
     return (p?.[key] || '').toString().toLowerCase();
@@ -652,6 +907,9 @@ async function renderPrizes(){
     if (typeof va === 'number' && typeof vb === 'number') {
       return sortDir === 'asc' ? va - vb : vb - va;
     }
+    // If one is number and the other is string, numbers first
+    if (typeof va === 'number' && typeof vb !== 'number') return sortDir === 'asc' ? -1 : 1;
+    if (typeof va !== 'number' && typeof vb === 'number') return sortDir === 'asc' ? 1 : -1;
     if (va < vb) return sortDir === 'asc' ? -1 : 1;
     if (va > vb) return sortDir === 'asc' ?  1 : -1;
     return 0;
@@ -1453,6 +1711,9 @@ export async function bootCMS(){
   if (eid && list.some(e => e.id === eid)) setCurrentEventId(eid);
   else if (list[0]) setCurrentEventId(list[0].id);
 
+  // load users from RTDB before rendering UI/login
+  await loadUsersFromDB();
+
   // small helper: call a binder if it exists; await if it returns a promise
   const maybe = async (fn) => {
     try {
@@ -1478,6 +1739,10 @@ export async function bootCMS(){
   await maybe(bindPolls);
   await maybe(bindLandingButton);
   await maybe(bindExternalLinks);
+  await maybe(bindUsers);
+  renderUsersUI();
+  applyRoleGuard();
+  bindLogin();
   try { await renderPollManager(); } catch (e) { console.error(e); }
 
 

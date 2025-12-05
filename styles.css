@@ -20,7 +20,7 @@ body.theme-light {
 html,body{height:100%}
 body{margin:0;font-family:Inter,system-ui,Arial;color:#eef;background:var(--bg)}
 header{position:sticky;top:0;background:linear-gradient(180deg,rgba(11,15,26,.95),rgba(11,15,26,.82));backdrop-filter:blur(8px);z-index:10;border-bottom:1px solid rgba(255,255,255,.08)}
-.container{max-width:1320px;margin:0 auto;padding:14px 16px}
+.container{max-width:1900px;width:100%;margin:0 auto;padding:14px 16px}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 .card{background:var(--card);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:14px}
 input,button,select,textarea{padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.15);background:#0e1626;color:#eef}
@@ -497,6 +497,10 @@ body:not(.tablet-mode)  #tabletView  { display: none !important; }
   vertical-align: middle;
   white-space: nowrap;
 }
+#prizeTable th, #prizeTable td {
+  padding: 10px 12px;
+  vertical-align: middle;
+}
 
 /* Show sort arrows at all times; switch when sorted */
 #guestTable thead th[data-sortable="true"]::after {
@@ -507,6 +511,14 @@ body:not(.tablet-mode)  #tabletView  { display: none !important; }
 }
 #guestTable thead th[data-sort="asc"]::after  { content: " ▲"; opacity: .9; }
 #guestTable thead th[data-sort="desc"]::after { content: " ▼"; opacity: .9; }
+#prizeTable thead th[data-sortable="true"]::after {
+  content: " ↕";
+  opacity: .5;
+  font-size: .9em;
+  margin-left: 4px;
+}
+#prizeTable thead th[data-sort="asc"]::after  { content: " ▲"; opacity: .9; }
+#prizeTable thead th[data-sort="desc"]::after { content: " ▼"; opacity: .9; }
 
 /* Small buttons look tidy in rows */
 .btn.small { padding: 4px 8px; font-size: 12px; }
@@ -518,6 +530,10 @@ body:not(.tablet-mode)  #tabletView  { display: none !important; }
 
 #guestTable thead th[data-sort="asc"],
 #guestTable thead th[data-sort="desc"] {
+  font-weight: 600;
+}
+#prizeTable thead th[data-sort="asc"],
+#prizeTable thead th[data-sort="desc"] {
   font-weight: 600;
 }
 
@@ -1172,3 +1188,30 @@ body:not(.is-public) #cmsStage16x9 .stage-main #stageGrid .winner-card .dept {
   font-size: clamp(18px, 2vw, 24px) !important;
   line-height: 1.1;
 }
+
+/* PUBLIC: scale text fluidly by winner count for better legibility */
+.is-public #stageGrid.winners-1 .winner-card .name { font-size: clamp(8vw, 10vw, 18vw) !important; }
+.is-public #stageGrid.winners-1 .winner-card .dept { font-size: clamp(4vw, 6vw, 10vw) !important; }
+
+.is-public #stageGrid.winners-2 .winner-card .name { font-size: clamp(6vw, 8vw, 14vw) !important; }
+.is-public #stageGrid.winners-2 .winner-card .dept { font-size: clamp(3.5vw, 5vw, 8vw) !important; }
+
+.is-public #stageGrid.winners-3 .winner-card .name { font-size: clamp(5vw, 7vw, 12vw) !important; }
+.is-public #stageGrid.winners-3 .winner-card .dept { font-size: clamp(3vw, 4.5vw, 7vw) !important; }
+
+.is-public #stageGrid.winners-4 .winner-card .name { font-size: clamp(4.5vw, 6vw, 10vw) !important; }
+.is-public #stageGrid.winners-4 .winner-card .dept { font-size: clamp(2.8vw, 4vw, 6.6vw) !important; }
+
+.is-public #stageGrid.winners-5 .winner-card .name,
+.is-public #stageGrid.winners-6 .winner-card .name { font-size: clamp(4vw, 5.4vw, 9vw) !important; }
+.is-public #stageGrid.winners-5 .winner-card .dept,
+.is-public #stageGrid.winners-6 .winner-card .dept { font-size: clamp(2.4vw, 3.6vw, 6vw) !important; }
+
+.is-public #stageGrid.winners-7 .winner-card .name,
+.is-public #stageGrid.winners-8 .winner-card .name,
+.is-public #stageGrid.winners-9 .winner-card .name,
+.is-public #stageGrid.winners-10 .winner-card .name { font-size: clamp(3.4vw, 4.4vw, 7.2vw) !important; }
+.is-public #stageGrid.winners-7 .winner-card .dept,
+.is-public #stageGrid.winners-8 .winner-card .dept,
+.is-public #stageGrid.winners-9 .winner-card .dept,
+.is-public #stageGrid.winners-10 .winner-card .dept { font-size: clamp(2vw, 3vw, 5vw) !important; }

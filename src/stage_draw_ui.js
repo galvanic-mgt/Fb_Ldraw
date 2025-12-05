@@ -4,7 +4,7 @@ import {
 } from './core_firebase.js';
 
 import {
-  performDraw, rerollOne, clearScreenResults, exportCurrentWinners, drawState,
+  performDraw, rerollOne, clearScreenResults, exportCurrentWinners, drawState, undoLastDraw,
   renderBatchGrid as renderBatchGridCore,
   renderRerollLog as renderRerollLogCore,
   fitWinnerCardText
@@ -98,7 +98,10 @@ export async function renderStageDraw(mode){
 
   // Render any last batch already in memory (shared renderer)
   renderBatchGridCore(gridEl, drawState.lastBatch, mode);
-  fitWinnerCardText(gridEl, { nameMax: 90, deptMax: 32 });
+  if (mode !== 'public') {
+    const fitOpts = { nameMax: 140, deptMax: 70 };
+    fitWinnerCardText(gridEl, fitOpts);
+  }
 
   // Totals updater
   const updateTotals = async () => {
@@ -146,6 +149,7 @@ if (exportBtn) exportBtn.onclick = ()=> exportCurrentWinners();
   // Roll using active batch size
   const rollBtn = document.getElementById('btnRollMain');
   const rollInstantBtn = document.getElementById('btnRollInstant');
+  const undoBtn = document.getElementById('btnUndoDraw');
   if (rollBtn) {
     rollBtn.onclick = async ()=>{
   const active = document.querySelector('#drawBtns [data-batch].active');
@@ -159,7 +163,9 @@ if (exportBtn) exportBtn.onclick = ()=> exportCurrentWinners();
     gridEl,
    afterRender: batch => {
     renderBatchGridCore(gridEl, batch, mode);
-    fitWinnerCardText(gridEl, { nameMax: 90, deptMax: 32 });
+    if (mode !== 'public') {
+      fitWinnerCardText(gridEl, { nameMax: 140, deptMax: 70 });
+    }
    }
   });
 
@@ -191,7 +197,9 @@ if (exportBtn) exportBtn.onclick = ()=> exportCurrentWinners();
         skipCountdown: true,
         afterRender: batch => {
           renderBatchGridCore(gridEl, batch, mode);
-          fitWinnerCardText(gridEl, { nameMax: 90, deptMax: 32 });
+          if (mode !== 'public') {
+            fitWinnerCardText(gridEl, { nameMax: 140, deptMax: 70 });
+          }
         }
       });
 
@@ -203,6 +211,26 @@ if (exportBtn) exportBtn.onclick = ()=> exportCurrentWinners();
       }
       await updateTotals();
       await renderRerollLogCore();
+    };
+  }
+
+  if (undoBtn) {
+    undoBtn.onclick = async ()=>{
+      const ok = confirm('確定要復原上一次抽獎結果？此動作會移除剛抽出的得獎者。');
+      if (!ok) return;
+      try{
+        await undoLastDraw();
+        // refresh HUD
+        const latest = (await getPrizes(eid)).find(p=>p.id===curId);
+        const left2 = latest ? Math.max(0, latest.quota - (latest.winners?.length||0)) : left;
+        if (prizeLeftEl) prizeLeftEl.textContent = left2;
+        await updateTotals();
+        await renderRerollLogCore();
+        // clear grid display
+        renderBatchGridCore(gridEl, [], mode);
+      }catch(err){
+        alert(err?.message || '無法復原抽獎');
+      }
     };
   }
 

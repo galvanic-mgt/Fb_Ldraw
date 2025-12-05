@@ -91,24 +91,63 @@
 /* PUBLIC VIEW — Logo */
 .is-public #stageLogo {
     width: 300px;        /* adjust this */
-    height: 300px;        /* adjust this */
+    height: 300px;       /* match banner height */
+    max-height: 300px;   /* cap to banner height */
     background-size: contain !important;
     background-repeat: no-repeat;
     background-position: center;
     margin-right: 24px;
     margin-left: 32px;
     overflow: hidden;           /* keep it inside rounded corners */
+    position: relative;
 }
 
 /* PUBLIC VIEW — Banner */
 .is-public #stageBanner {
-    height: 200px;        /* adjust this */
+    height: 300px;        /* adjust this */
+    width: 100%;          /* let it hog the right side */
     background-size: contain;
     background-repeat: no-repeat;
     background-position: center;
     border-radius: 0px;
     background-size: contain;   /* ⬅️ key line */
     overflow: hidden;           /* keep it inside rounded corners */
+    position: relative;
+}
+
+/* Frame both logo + banner with one dark multiply overlay (two sections inside) */
+.is-public .header {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr; /* let banner hog the right side */
+  gap: 20px;
+  padding: 16px 20px;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,.14);
+  overflow: hidden;
+  align-items: center;
+}
+.is-public .header::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5); /* single dark multiply across both sections */
+  mix-blend-mode: multiply;
+  pointer-events: none;
+}
+.is-public .header > * { position: relative; z-index: 1; }
+
+/* Override default header grid to ensure banner stretches the right side */
+.is-public .stage-row.header {
+  grid-template-columns: auto 1fr !important;
+  align-items: center;
+}
+.is-public .stage-row.header #stageBanner {
+  justify-self: stretch;
+  align-self: stretch;
+  display: block;              /* override grid centering from .banner-box */
+  background-size: cover;      /* fill its area */
+  background-position: center; /* keep nice crop */
 }
 
 /* Public header row container (optional tidy-up) */

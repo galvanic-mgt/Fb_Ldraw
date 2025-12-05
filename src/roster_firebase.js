@@ -100,7 +100,7 @@ export async function exportCSV(){
   const prizeMap = new Map();
   (prizes || []).forEach(p=>{
     (p.winners || []).forEach(w=>{
-      const key = `${w.name}||${w.dept||''}`;
+      const key = w?.phone ? `phone:${w.phone}` : `${w.name}||${w.dept||''}`;
       prizeMap.set(key, p.name || '');
     });
   });
@@ -115,7 +115,7 @@ export async function exportCSV(){
       p.table || '',
       p.seat || '',
       p.checkedIn ? 1 : 0,
-      prizeMap.get(`${p.name}||${p.dept||''}`) || p.prize || ''
+      prizeMap.get(p.phone ? `phone:${p.phone}` : `${p.name}||${p.dept||''}`) || p.prize || ''
     ])
   ];
 

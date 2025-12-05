@@ -1,7 +1,7 @@
 import { listEvents, createEvent, setCurrentEventId, getCurrentEventId, getEventInfo, saveEventInfo,
          getPeople, setPeople, getPrizes, getCurrentPrizeIdRemote, setCurrentPrizeIdRemote,
          getQuestions, setQuestions, getAssets, setAssets, getPolls, setPoll, upsertEventMeta } from './core_firebase.js';
-import { addPrize, removePrize, setCurrentPrize } from './stage_prizes_firebase.js';
+import { addPrize, removePrize, setCurrentPrize, handlePrizeImportCSV, clearAllPrizes, updatePrize } from './stage_prizes_firebase.js';
 import { handleImportCSV, exportCSV } from './roster_firebase.js';
 import { renderStageDraw } from './stage_draw_ui.js';
 import { FB } from './fb.js';
@@ -219,6 +219,20 @@ const rosterState = {
   pageSize: 50,
   cache: []         // last fetched people (unfiltered)
 };
+
+const personKey = (p)=>{
+  if (!p) return '';
+  const phone = (p.phone || '').trim();
+  const name  = (p.name  || '').trim();
+  const dept  = (p.dept  || '').trim();
+  return phone ? `phone:${phone}` : `${name}||${dept}`;
+};
+
+// ====== Prize table state (sorting only) ======
+const prizeState = {
+  sortBy: 'name',
+  sortDir: 'asc' // 'asc' | 'desc'
+};
 // ===========================================================
 
 let bootEventsAdmin = ()=>{};
@@ -254,6 +268,11 @@ async function renderEventList(){
     item.className = 'event-item' + (getCurrentEventId() === ev.id ? ' active' : '');
     item.innerHTML = `<div class="event-name">${ev.name}</div><div class="event-meta">ID: ${ev.id}</div>`;
     item.onclick = async ()=>{
+      const current = getCurrentEventId();
+      if (current && current !== ev.id) {
+        const ok = confirm(`即將切換到「${ev.name}」活動，確定嗎？`);
+        if (!ok) return;
+      }
       setCurrentEventId(ev.id);
       await renderAll();
     };
@@ -398,7 +417,7 @@ function renderRow(tr, p, idx, mode){
       p.checkedIn = e.target.checked;
       await setPeople(eid, people);
     };
-    tr.querySelector('.save').onclick = async ()=>{
+    const doSave = async ()=>{
       const v = sel => tr.querySelector(sel)?.value?.trim() || '';
       p.name  = v('.in.name');
       p.dept  = v('.in.dept');
@@ -409,6 +428,13 @@ function renderRow(tr, p, idx, mode){
       await setPeople(eid, people);
       renderRow(tr, p, idx, 'view');
     };
+    tr.querySelector('.save').onclick = doSave;
+    // Enter to save quickly while editing
+    tr.querySelectorAll('input.in').forEach(inp=>{
+      inp.addEventListener('keydown', e=>{
+        if(e.key === 'Enter'){ e.preventDefault(); doSave(); }
+      });
+    });
     tr.querySelector('.cancel').onclick = ()=> renderRow(tr, p, idx, 'view');
   } else {
     tr.innerHTML = `
@@ -422,6 +448,7 @@ function renderRow(tr, p, idx, mode){
       <td>${p.prize ? '🎁 '+p.prize : ''}</td>
       <td>
         <button class="btn small edit">編輯</button>
+        ${p.prize ? '<button class="btn small" data-clear-win>清除得獎</button>' : ''}
         <button class="btn small danger delete">刪除</button>
       </td>
     `;
@@ -430,6 +457,29 @@ function renderRow(tr, p, idx, mode){
       await setPeople(eid, people);
     };
     tr.querySelector('.edit').onclick = ()=> renderRow(tr, p, idx, 'edit');
+    // Double-click row to jump into edit mode for on-the-go changes
+    tr.addEventListener('dblclick', ()=> renderRow(tr, p, idx, 'edit'));
+    tr.querySelector('[data-clear-win]')?.addEventListener('click', async ()=>{
+      if (!p.prize) return;
+      const ok = confirm(`確定要移除「${p.name||''}」的得獎紀錄（${p.prize}）？`);
+      if (!ok) return;
+      const eidNow = getCurrentEventId();
+      if (!eidNow) return;
+      const key = personKey(p);
+      const wKey = w => w?.phone ? `phone:${w.phone}` : `${w?.name||''}||${w?.dept||''}`;
+      const prizes = await getPrizes(eidNow);
+      let changed = false;
+      (prizes || []).forEach(pr=>{
+        const before = Array.isArray(pr.winners) ? pr.winners.length : 0;
+        pr.winners = (pr.winners || []).filter(w => wKey(w) !== key);
+        if (pr.winners.length !== before) changed = true;
+      });
+      if (changed) await setPrizes(eidNow, prizes);
+      // clear local prize flag on this person
+      p.prize = '';
+      await setPeople(eidNow, people);
+      await renderRoster();
+    });
     tr.querySelector('.delete').onclick = async ()=>{
       const ok = confirm(`確定刪除「${p.name||''}」？`);
       if(!ok) return;
@@ -552,16 +602,46 @@ function bindRoster(){
   });
 }
 
-async function renderPrizes(){const eid=getCurrentEventId();if(!eid)return;const [prizes,curId]=await Promise.all([getPrizes(eid),getCurrentPrizeIdRemote(eid)]);const tbody=document.getElementById('prizeRows');tbody.innerHTML='';
-  (prizes||[]).forEach(p=>{
-    const used=(p.winners||[]).length;
-    const tr=document.createElement('tr');
+async function renderPrizes(){
+  const eid = getCurrentEventId(); if(!eid) return;
+  const [prizes, curId] = await Promise.all([getPrizes(eid), getCurrentPrizeIdRemote(eid)]);
+  const tbody = document.getElementById('prizeRows');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+
+  const list = Array.isArray(prizes) ? prizes.slice() : [];
+  const { sortBy, sortDir } = prizeState;
+  const val = (p, key)=>{
+    if (key === 'quota') return Number(p?.quota || 0);
+    if (key === 'used')  return (p?.winners || []).length;
+    return (p?.[key] || '').toString().toLowerCase();
+  };
+  list.sort((a, b)=>{
+    const va = val(a, sortBy);
+    const vb = val(b, sortBy);
+    if (typeof va === 'number' && typeof vb === 'number') {
+      return sortDir === 'asc' ? va - vb : vb - va;
+    }
+    if (va < vb) return sortDir === 'asc' ? -1 : 1;
+    if (va > vb) return sortDir === 'asc' ?  1 : -1;
+    return 0;
+  });
+
+  // visual indicator (▲ ▼)
+  document.querySelectorAll('#prizeTable thead th').forEach(th=>{
+    th.dataset.sort = (th.dataset.key === sortBy) ? sortDir : '';
+  });
+
+  list.forEach(p=>{
+    const used = (p.winners || []).length;
+    const tr = document.createElement('tr');
     tr.innerHTML = `
       <td><input type="radio" name="curpr" ${curId===p.id?'checked':''}></td>
       <td>${p.name||''}</td>
       <td>${p.quota||1}</td>
       <td>${used}</td>
       <td>
+        <button class="btn small" data-edit="${p.id}">編輯</button>
         <button class="btn small danger" data-del="${p.id}">刪除</button>
       </td>`;
     tr.querySelector('input').onchange = async ()=>{
@@ -576,14 +656,33 @@ async function renderPrizes(){const eid=getCurrentEventId();if(!eid)return;const
       await removePrize(p.id);
       await renderPrizes();
     };
+    tr.querySelector('[data-edit]').onclick = async ()=>{
+      const newName = prompt('更新獎品名稱：', p.name || '')?.trim();
+      if (!newName) return;
+      const newQuotaRaw = prompt('更新名額（數字）：', String(p.quota || 1))?.trim();
+      if (newQuotaRaw === null) return;
+      const newQuota = Math.max(0, Number(newQuotaRaw) || 0);
+      const quotaChanged = newQuota !== Number(p.quota || 0);
+      if (quotaChanged) {
+        const ok = confirm(`名額將改為 ${newQuota}，確定要修改嗎？`);
+        if (!ok) return;
+      }
+      await updatePrize({ id: p.id, name: newName, quota: newQuota });
+      await renderPrizes();
+    };
     tbody.appendChild(tr);
   });
-    const wins=document.getElementById('winnersList');
-    wins.innerHTML='';(prizes||[]).forEach(
+
+  const wins = document.getElementById('winnersList');
+  if (wins) {
+    wins.innerHTML = '';
+    (prizes||[]).forEach(
       p=>(p.winners||[]).forEach(w=>{
         const li=document.createElement('li');
         li.textContent=`${w.name}（${p.name}）`;
-        wins.appendChild(li);}));}
+        wins.appendChild(li);}));
+  }
+}
 
 document.getElementById('addPrize')?.addEventListener('click', async ()=>{
     const name = document.getElementById('newPrizeName')?.value.trim();
@@ -871,7 +970,47 @@ async function renderPolls(){
 }
 
 
-function bindPolls(){document.getElementById('btnAddPoll')?.addEventListener('click',async()=>{const eid=getCurrentEventId();const q=document.getElementById('newPollQ').value.trim();const raw=document.getElementById('newPollOpts').value.trim();if(!q||!raw)return;const options=raw.split(/\n|,/).map(s=>s.trim()).filter(Boolean).map((t,i)=>({id:'o'+(i+1),text:t,img:''}));const poll={id:'poll'+Date.now().toString(36),question:q,options,votes:{}};await setPoll(eid,poll);document.getElementById('newPollQ').value='';document.getElementById('newPollOpts').value='';await renderPolls();});}
+function bindPolls(){
+  const btn = document.getElementById('btnAddPoll');
+  if (!btn) return;
+
+  btn.addEventListener('click', async ()=>{
+    const eid = getCurrentEventId();
+    if (!eid) return;
+
+    // Prefer current chip-based inputs; fallback to legacy ids if present
+    const qInput   = document.getElementById('pollQInput') || document.getElementById('newPollQ');
+    const optsText = document.getElementById('newPollOpts');
+
+    const question = qInput?.value?.trim() || '';
+
+    // Collect options: first try chips, else fallback to textarea/newline/comma input
+    let opts = getChipValues();
+    if (!opts.length && optsText) {
+      opts = (optsText.value || '')
+        .split(/\n|,/)
+        .map(s => s.trim())
+        .filter(Boolean);
+    }
+
+    if (!question || !opts.length) {
+      alert('請輸入問題與至少一個選項');
+      return;
+    }
+
+    const options = opts.map((t, i) => ({ id: 'o' + (i + 1), text: t, img: '' }));
+    const poll = { id: 'poll' + Date.now().toString(36), question, options, votes: {} };
+    await setPoll(eid, poll);
+
+    if (qInput) qInput.value = '';
+    if (optsText) optsText.value = '';
+    document.getElementById('optChips')?.replaceChildren(); // clear chips if used
+
+    await renderPolls();
+    await renderPollManager(); // keep 投票管理 list in sync
+    await bindPollPicker(); // refresh picker for new poll
+  });
+}
 
 async function bindPollPicker(){
   const eid   = getCurrentEventId();
@@ -1095,6 +1234,8 @@ function bindPollComposer(){
     // reset UI
     inputQ.value = ''; wrap.innerHTML = '';
     await renderPolls();
+    await renderPollManager(); // keep 投票管理 list in sync
+    await bindPollPicker(); // refresh picker with new poll
   });
 
   // Clear Stage (hide QR & "next gift" on public screens)
@@ -1125,6 +1266,44 @@ function bindPrizeActions(){
     if (nameEl)  nameEl.value = '';
     if (quotaEl) quotaEl.value = '1';
     await renderPrizes();
+  });
+
+  // 匯入獎品
+  document.getElementById('btnImportPrizeCSV')?.addEventListener('click', ()=>{
+    const f = document.getElementById('prizeCsvFile');
+    if(!f?.files?.[0]){ alert('請先選擇 CSV 檔案'); return; }
+    handlePrizeImportCSV(f.files[0], async ()=>{
+      prizeState.sortBy = 'name';
+      prizeState.sortDir = 'asc';
+      await renderPrizes();
+    });
+  });
+
+  // 清空獎品
+  document.getElementById('btnDeleteAllPrizes')?.addEventListener('click', async ()=>{
+    const ok = confirm('確定要刪除所有獎品與得獎紀錄？此動作無法復原。');
+    if(!ok) return;
+    await clearAllPrizes();
+    prizeState.sortBy = 'name';
+    prizeState.sortDir = 'asc';
+    await renderPrizes();
+  });
+
+  // 排序
+  document.querySelectorAll('#prizeTable thead th[data-sortable="true"]')?.forEach(th=>{
+    th.addEventListener('click', ()=>{
+      const key = th.dataset.key;
+      if(!key) return;
+      if(prizeState.sortBy === key){
+        prizeState.sortDir = prizeState.sortDir === 'asc' ? 'desc' : 'asc';
+      } else {
+        prizeState.sortBy = key;
+        prizeState.sortDir = 'asc';
+      }
+      document.querySelectorAll('#prizeTable thead th').forEach(x=> x.dataset.sort = '');
+      th.dataset.sort = prizeState.sortDir;
+      renderPrizes();
+    });
   });
 }
 
@@ -1247,11 +1426,22 @@ document.getElementById('btnAddPoll')?.addEventListener('click', async () => {
   const newId = 'p' + Math.random().toString(36).slice(2, 8);
   const blank = { question: '', options: [{ text: '' }], votes: {} };
   await FB.put(`/events/${eid}/polls/${newId}`, blank);
-  renderPollManager();
+  await renderPollManager();
+  await bindPollPicker(); // refresh picker for new poll
 });
 
 
-export async function renderAll(){await renderEventList();await renderEventInfo();await renderRoster();await renderPrizes();await renderQuestions();await renderAssets();await renderPolls();}
+export async function renderAll(){
+  await renderEventList();
+  await renderEventInfo();
+  await renderRoster();
+  await renderPrizes();
+  await renderQuestions();
+  await renderAssets();
+  await renderPolls();
+  await renderPollManager();   // keep poll manager in sync when switching events
+  await bindPollPicker();      // refresh poll picker options for current event
+}
 export async function bootCMS(){
   
   // pick event

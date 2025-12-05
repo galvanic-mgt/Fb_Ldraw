@@ -32,6 +32,13 @@ function ensurePrizeShape(p) {
   };
 }
 
+function winnerKey(p){
+  const name  = (p?.name  || '').trim();
+  const dept  = (p?.dept  || '').trim();
+  const phone = (p?.phone || '').trim();
+  return phone ? `phone:${phone}` : `name:${name}||${dept}`;
+}
+
 /* ----------------- CRUD for prizes (used by CMS UI) ----------------- */
 
 // CREATE
@@ -88,6 +95,29 @@ export async function removePrize(prizeId) {
   return true;
 }
 
+// DELETE ALL (prizes + winners + people.prize reset)
+export async function clearAllPrizes() {
+  const eid = getCurrentEventId();
+  if (!eid) throw new Error('尚未選擇活動');
+
+  // clear prizes + current selection
+  await setPrizes(eid, []);
+  await setCurrentPrizeIdRemote(eid, null);
+
+  // reset prize field on people so roster shows clean slate
+  try {
+    const people = await getPeople(eid);
+    if (Array.isArray(people) && people.length) {
+      const cleaned = people.map(p => p ? { ...p, prize: '' } : p);
+      await setPeople(eid, cleaned);
+    }
+  } catch (e) {
+    console.warn('[clearAllPrizes] unable to reset people prizes', e);
+  }
+
+  return true;
+}
+
 // --- SELECT / SET CURRENT PRIZE (needed by ui_cms_firebase.js) ---
 export async function setCurrentPrize(prizeId) {
   const eid = getCurrentEventId();
@@ -105,6 +135,100 @@ export async function setCurrentPrize(prizeId) {
 
   await setCurrentPrizeIdRemote(eid, pid);
   return pid;
+}
+
+/* ----------------- CSV import ----------------- */
+
+// very simple CSV split with quotes support
+function splitCSVLine(line) {
+  const out = [];
+  let cur = '';
+  let inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    const n = line[i + 1];
+    if (c === '"') {
+      if (inQ && n === '"') {
+        cur += '"';
+        i++;
+      } else {
+        inQ = !inQ;
+      }
+      continue;
+    }
+    if (c === ',' && !inQ) {
+      out.push(cur);
+      cur = '';
+      continue;
+    }
+    cur += c;
+  }
+  out.push(cur);
+  return out.map(s => s.trim());
+}
+
+function mapPrizeHeader(headers) {
+  const h = headers.map(x => x.trim().toLowerCase());
+  const find = (names) => {
+    for (const n of names) {
+      const idx = h.indexOf(n.toLowerCase());
+      if (idx !== -1) return idx;
+    }
+    return -1;
+  };
+  return {
+    id:    find(['id', '編號']),
+    name:  find(['name', '獎品', '獎項', '名稱', 'prize']),
+    quota: find(['quota', '名額', '數量'])
+  };
+}
+
+export async function importPrizesCSV(text) {
+  const eid = getCurrentEventId();
+  if (!eid) throw new Error('尚未選擇活動');
+
+  const lines = String(text).split(/\r?\n/).filter(l => l.trim().length);
+  if (!lines.length) return [];
+
+  const header = splitCSVLine(lines[0]);
+  const idx = mapPrizeHeader(header);
+
+  const list = lines.slice(1).map(line => {
+    const cols = splitCSVLine(line);
+    const pick = (i) => (i >= 0 && i < cols.length) ? cols[i] : '';
+    const name = String(pick(idx.name) || '').trim();
+    if (!name) return null;
+    const quotaRaw = pick(idx.quota);
+    const quota = Math.max(0, Number(quotaRaw || 1)) || 1;
+    const id = String(pick(idx.id) || '').trim() || ('p' + Math.random().toString(36).slice(2, 8));
+    return ensurePrizeShape({ id, name, quota, winners: [] });
+  }).filter(Boolean);
+
+  await setPrizes(eid, list);
+
+  // reset prize labels on people since winners were wiped
+  try {
+    const people = await getPeople(eid);
+    if (Array.isArray(people) && people.length) {
+      const cleaned = people.map(p => p ? { ...p, prize: '' } : p);
+      await setPeople(eid, cleaned);
+    }
+  } catch (e) {
+    console.warn('[importPrizesCSV] unable to reset people prizes', e);
+  }
+
+  const cur = list[0]?.id || null;
+  await setCurrentPrizeIdRemote(eid, cur);
+  return list;
+}
+
+export function handlePrizeImportCSV(file, cb) {
+  const reader = new FileReader();
+  reader.onload = async () => {
+    await importPrizesCSV(String(reader.result));
+    if (cb) cb();
+  };
+  reader.readAsText(file);
 }
 
 /* ----------------- draw core ----------------- */
@@ -131,15 +255,15 @@ export async function drawBatch(n = 1, opts = {}) {
     const need = prizeLeftLocal(cur);
     if (need <= 0) throw new Error('此獎項名額已滿');
 
-    // no-repeat across ALL prizes
+    // no-repeat across ALL prizes (match by phone when available)
     const winnersSet = new Set(
-      prizes.flatMap(p => (p?.winners || []).map(w => `${w.name}||${w.dept || ''}`))
+      prizes.flatMap(p => (p?.winners || []).map(w => winnerKey(w)))
     );
 
     const excludeKeys = new Set((opts.excludeKeys || []).filter(Boolean));
     const pool = people.filter(p => {
       if (!p || !p.checkedIn) return false;
-      const key = `${p.name}||${p.dept || ''}`;
+      const key = winnerKey(p);
       if (winnersSet.has(key)) return false;
       if (excludeKeys.has(key)) return false;
       return true;
@@ -155,12 +279,12 @@ export async function drawBatch(n = 1, opts = {}) {
 
     const winnerKeys = new Set();
     picks.forEach(w => {
-      cur.winners.push({ name: w.name, dept: w.dept || '', time: now });
-      winnerKeys.add(`${w.name}||${w.dept || ''}`);
+      cur.winners.push({ name: w.name, dept: w.dept || '', phone: w.phone || '', time: now });
+      winnerKeys.add(winnerKey(w));
     });
 
     const peopleUpdated = people.map(p =>
-      winnerKeys.has(`${p.name}||${p.dept || ''}`) ? { ...p, prize: prizeName } : p
+      winnerKeys.has(winnerKey(p)) ? { ...p, prize: prizeName } : p
     );
 
     // 1) Save winners & people like before

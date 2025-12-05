@@ -116,6 +116,7 @@
     <button id="btnRollMain" class="btn" style="background:#e53935;color:#fff">開始抽獎</button>
     <button id="btnRollInstant" class="btn" style="background:#8bc34a;color:#000000">即時抽獎</button>
     <button id="btnClearScreen" class="btn" style="background:#ffd84d;color:#000000">清空畫面</button>
+    <button id="btnUndoDraw" class="btn btn-secondary" style="background:#555;color:#fff">撤銷上一次抽獎</button>
     <button id="btnExportWinners" class="btn">匯出本獎項得獎名單</button>
 
     <!-- 16:9 CMS Stage (entire lucky draw UI lives inside this box) -->
@@ -161,11 +162,27 @@
 <div id="rerollLogPanel" class="reroll-log"></div>
 </section>
 
-<section class="card subpage" id="pagePrizes" style="display:none"><h3>獎品 / 抽獎</h3><div class="bar" style="margin-bottom:8px"><input id="newPrizeName" placeholder="獎品名稱"/><label>名額 <input type="number" id="newPrizeQuota" value="1" min="1"/></label><button id="addPrize" class="btn" type="button">+ 新增</button></div>
-  <table>
+<section class="card subpage" id="pagePrizes" style="display:none">
+  <h3>獎品 / 抽獎</h3>
+  <div class="bar" style="margin-bottom:8px;flex-wrap:wrap;gap:8px">
+    <input id="newPrizeName" placeholder="獎品名稱"/>
+    <label>名額 <input type="number" id="newPrizeQuota" value="1" min="1"/></label>
+    <button id="addPrize" class="btn" type="button">+ 新增</button>
+    <span class="muted" style="font-size:12px">可手動新增或匯入 CSV</span>
+  </div>
+  <div class="bar" style="margin-bottom:8px;flex-wrap:wrap;gap:8px">
+    <input type="file" id="prizeCsvFile" accept=".csv"/>
+    <button id="btnImportPrizeCSV" class="btn">匯入獎品 CSV</button>
+    <button id="btnDeleteAllPrizes" class="btn danger" style="background:#b71c1c;color:#fff">清空所有獎品</button>
+  </div>
+  <table class="fullwidth" id="prizeTable">
    <thead>
      <tr>
-       <th>使用中</th><th>獎品名稱</th><th>名額</th><th>已得獎</th><th style="width:120px">操作</th>
+       <th style="width:90px">使用中</th>
+       <th data-sortable="true" data-key="name">獎品名稱</th>
+       <th data-sortable="true" data-key="quota" style="width:100px">名額</th>
+       <th data-sortable="true" data-key="used" style="width:100px">已得獎</th>
+       <th style="width:120px">操作</th>
      </tr>
    </thead>
    <tbody id="prizeRows"></tbody>

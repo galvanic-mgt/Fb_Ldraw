@@ -36,6 +36,13 @@ export const drawState = {
   animating: false
 };
 
+function winnerKey(p){
+  const name  = (p?.name  || '').trim();
+  const dept  = (p?.dept  || '').trim();
+  const phone = (p?.phone || '').trim();
+  return phone ? `phone:${phone}` : `name:${name}||${dept}`;
+}
+
 // --- Helpers ---
 function sleep(ms){ return new Promise(r=>setTimeout(r, ms)); }
 
@@ -252,7 +259,7 @@ export async function rerollOne(slotIndex, hooks){
     // prefer the last occurrence (most recent) to avoid touching older duplicates
     for (let i = cur.winners.length - 1; i >= 0; i--) {
       const w = cur.winners[i];
-      if (w && w.name === target.name && (w.dept || '') === (target.dept || '')) {
+      if (winnerKey(w) === winnerKey(target)) {
         targetIdx = i;
         break;
       }
@@ -286,7 +293,7 @@ export async function rerollOne(slotIndex, hooks){
   if (changed) await setPeople(eid, people);
 
   // Draw exactly ONE replacement and persist via core
-  const excludeKey = `${removed.name}||${removed.dept || ''}`;
+  const excludeKey = winnerKey(removed);
   const res = await coreDrawBatch(1, { excludeKeys: [excludeKey] });   // avoid picking the same person
   const replacement = (res && res.batch && res.batch[0]) ? res.batch[0] : null;
 
@@ -295,8 +302,8 @@ export async function rerollOne(slotIndex, hooks){
     await addRerollLog(eid, {
       prizeId: cur.id,
       prizeName: cur.name || '',
-      replaced:   { name: removed.name, dept: removed.dept || '' },
-      replacement: replacement ? { name: replacement.name, dept: replacement.dept || '' } : null
+      replaced:   { name: removed.name, dept: removed.dept || '', phone: removed.phone || '' },
+      replacement: replacement ? { name: replacement.name, dept: replacement.dept || '', phone: replacement.phone || '' } : null
     });
   } catch (e) {
     console.warn('[reroll] log failed', e);
@@ -329,6 +336,46 @@ export async function clearScreenResults(gridEl){
   } catch (e) {
     console.warn('[clearScreenResults] failed to clear public state', e);
   }
+}
+
+// --- Undo the most recent draw batch (remove winners + clear their prize) ---
+export async function undoLastDraw(){
+  const batch = Array.isArray(drawState.lastBatch) ? drawState.lastBatch : [];
+  if (!batch.length) throw new Error('目前沒有可以復原的抽獎');
+
+  const eid = getCurrentEventId();
+  if (!eid) throw new Error('尚未選擇活動');
+
+  const [people, prizes, curId] = await Promise.all([
+    getPeople(eid),
+    getPrizes(eid),
+    getCurrentPrizeIdRemote(eid)
+  ]);
+  const cur = (prizes || []).find(p => p && p.id === curId);
+  if (!cur) throw new Error('尚未選擇抽獎項目');
+
+  const keys = new Set(batch.map(w => winnerKey(w)));
+
+  // Remove those winners from current prize
+  const before = Array.isArray(cur.winners) ? cur.winners.length : 0;
+  cur.winners = (cur.winners || []).filter(w => !keys.has(winnerKey(w)));
+  const removed = before - cur.winners.length;
+  await setPrizes(eid, prizes);
+
+  // Clear prize on people for those winners (only if it matches this prize)
+  const prizeName = cur.name || '';
+  const peopleUpdated = (people || []).map(p => {
+    if (!p) return p;
+    const k = winnerKey(p);
+    if (keys.has(k) && (p.prize || '') === prizeName) {
+      return { ...p, prize: '' };
+    }
+    return p;
+  });
+  await setPeople(eid, peopleUpdated);
+
+  drawState.lastBatch = [];
+  return { removed };
 }
 
 // --- Export current prize winners as CSV ---

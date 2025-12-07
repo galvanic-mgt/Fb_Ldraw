@@ -12,12 +12,12 @@
       </style>
       </head>
 <body>
-<div id="loginGate" class="overlay" style="display:none"><form id="loginForm" class="card" style="min-width:320px; background:#121a2b; padding:16px"><h3 style="margin-top:0">登入</h3><label>帳號 <input id="loginUser" placeholder="admin"/></label><label>密碼 <input id="loginPass" type="password" placeholder="admin"/></label><div class="bar" style="margin-top:12px"><button class="btn primary" type="submit">進入</button></div></form></div>
+<div id="loginGate" class="overlay" style="display:none"><form id="loginForm" class="card login-card"><h3 style="margin-top:0">登入</h3><label>帳號 <input id="loginUser" placeholder="admin"/></label><label>密碼 <input id="loginPass" type="password" placeholder="admin"/></label><div class="bar" style="margin-top:12px"><button class="btn primary" type="submit">進入</button></div></form></div>
 <header><div class="container row"><div class="tabs"><button class="btn primary active" type="button">後台 CMS</button></div>
   <div class="bar" style="margin-left:auto"><button id="themeToggle" class="btn small">☀️ Normal Mode</button>
 <button id="btnLogout" class="btn small danger" type="button">Logout</button>
 <a class="btn btn-public" href="#" id="btnPublicBoard" role="button">Public Board ↗</a>
-<a class="btn btn-tablet" href="./tablet.html" target="_blank" role="button">Tablet View ↗</a>
+<a class="btn btn-tablet" id="btnTablet" href="./tablet.html" target="_blank" role="button">Tablet View ↗</a>
 <a class="btn primary" id="btnLanding" href="#" role="button">Landing ↗</a>
 </div></div>
 </header>
@@ -421,26 +421,36 @@
   import { getCurrentEventId } from './src/core_firebase.js';
 
   const btnPublic = document.getElementById('btnPublicBoard');
+  const btnTablet = document.getElementById('btnTablet');
 
-  if (btnPublic) {
-    btnPublic.addEventListener('click', (e) => {
-      e.preventDefault();
+  const ensureEvent = () => {
+    const eid = getCurrentEventId();
+    if (!eid) {
+      alert('請先在左側選擇一個活動（Event）。');
+      return null;
+    }
+    return eid;
+  };
 
-      // Use the event currently selected in CMS
-      const eid = getCurrentEventId();
+  const buildUrl = (file, eid) => {
+    const url = new URL(`./${file}`, window.location.href);
+    url.searchParams.set('event', eid);
+    return url.toString();
+  };
 
-      if (!eid) {
-        alert('請先在左側選擇一個活動（Event）再開啟 Public Board');
-        return;
-      }
+  btnPublic?.addEventListener('click', (e) => {
+    e.preventDefault();
+    const eid = ensureEvent();
+    if (!eid) return;
+    window.open(buildUrl('public.html', eid), '_blank');
+  });
 
-      // Build URL: public.html?event=xxxx
-      const url = new URL('./public.html', window.location.href);
-      url.searchParams.set('event', eid);
-
-      window.open(url.toString(), '_blank');  // open Public Board for this event
-    });
-  }
+  btnTablet?.addEventListener('click', (e) => {
+    e.preventDefault();
+    const eid = ensureEvent();
+    if (!eid) return;
+    window.open(buildUrl('tablet.html', eid), '_blank');
+  });
 </script>
 
 <footer class="app-footer">Developed by Galvanic Management Limited</footer>

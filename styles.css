@@ -1364,3 +1364,37 @@ body.theme-light .form-field select{
   color:#0f1a2f;
   border:1px solid #d9e3f0;
 }
+
+/* Login card on dark background */
+.login-card{
+  min-width:320px;
+  background:#121a2b;
+  color:#fff;
+}
+.login-card label{
+  display:block;
+  color:#fff;
+  margin-bottom:8px;
+}
+.login-card input{
+  background:rgba(0,0,0,.35);
+  border:1px solid rgba(255,255,255,.18);
+  color:#fff;
+   display:block;
+   width:100%;
+   margin-top:4px;
+}
+.login-card input::placeholder{color:rgba(255,255,255,.65);}
+
+/* Normal/light mode login */
+body.theme-light .login-card{
+  background:#fff;
+  color:#111;
+}
+body.theme-light .login-card label{color:#111;}
+body.theme-light .login-card input{
+  background:#fff;
+  border:1px solid #d9e3f0;
+  color:#111;
+}
+body.theme-light .login-card input::placeholder{color:#6b7280;}

@@ -402,7 +402,7 @@ function renderUsersUI(){
   const active = activeUser.id;
 
   tbody.innerHTML = '';
-  if (!users.length) {
+  if (isMaster && !users.length) {
     const tr = document.createElement('tr');
     tr.innerHTML = '<td colspan="4" class="muted">尚未建立使用者，請使用預設帳號登入：administrator / administrator</td>';
     tbody.appendChild(tr);

@@ -61,26 +61,48 @@ async function loadEventHeader(eid) {
   if ($("evTrain"))     $("evTrain").textContent    = info.train    || "";
   if ($("evParking"))   $("evParking").textContent  = info.parking  || "";
 
-  // Hide empty transport blocks
+  // Hide empty transport blocks (or the whole section if nothing)
   const hasBus     = Boolean((info.bus || '').trim());
   const hasTrain   = Boolean((info.train || '').trim());
   const hasParking = Boolean((info.parking || '').trim());
+  const hasMap     = Boolean((info.mapUrl || '').trim());
+  const hasTransport = hasBus || hasTrain || hasParking || hasMap;
   const busBlock     = document.getElementById('busBlock');
   const trainBlock   = document.getElementById('trainBlock');
   const parkingBlock = document.getElementById('parkingBlock');
+  const transportSec = document.getElementById('transportSection');
   if (busBlock)     busBlock.style.display     = hasBus ? '' : 'none';
   if (trainBlock)   trainBlock.style.display   = hasTrain ? '' : 'none';
   if (parkingBlock) parkingBlock.style.display = hasParking ? '' : 'none';
+  if (transportSec) transportSec.style.display = hasTransport ? '' : 'none';
   if ($("evNotes"))     $("evNotes").textContent    = info.notes    || "";
-  // Dynamic labels for check-in
-  const labelPhone = info.labelPhone || "電話";
-  const labelDept  = info.labelDept  || "代號";
+
+  // Hint block (title + text), hide if empty
+  const hintWrap  = document.getElementById('hintSection');
+  const hintTitle = document.getElementById('hintTitle');
+  const hintText  = document.getElementById('hintText');
+  const hasHint   = Boolean((info.hintTitle || '').trim() || (info.hintText || '').trim());
+  if (hintWrap) {
+    hintWrap.style.display = hasHint ? '' : 'none';
+  }
+  if (hasHint) {
+    if (hintTitle) hintTitle.textContent = (info.hintTitle || '活動提示').trim() || '活動提示';
+    if (hintText)  hintText.textContent  = (info.hintText  || '').trim();
+  }
+
+  // Dynamic labels for check-in (code is optional)
+  const labelPhone = (info.labelPhone || "電話").trim() || "電話";
+  const labelCodeRaw = (info.labelCode || "").trim();
+  const labelCode = labelCodeRaw || "";
   const titleEl = document.getElementById("checkinTitle");
   const labelEl = document.getElementById("checkinLabel");
   const inputEl = document.getElementById("codeDigits");
-  if (titleEl) titleEl.textContent = `到場報到（輸入${labelPhone}或${labelDept}）`;
-  if (labelEl) labelEl.textContent = `${labelPhone} / ${labelDept}`;
-  if (inputEl) inputEl.placeholder = `請輸入你的${labelPhone}或${labelDept}`;
+  const codePart = labelCode ? `或${labelCode}` : "";
+  if (titleEl) titleEl.textContent = `到場報到（輸入${labelPhone}${codePart}）`;
+  if (labelEl) labelEl.textContent = labelCode ? `${labelPhone} / ${labelCode}` : `${labelPhone}`;
+  if (inputEl) inputEl.placeholder = labelCode
+    ? `請輸入你的${labelPhone}或${labelCode}`
+    : `請輸入你的${labelPhone}`;
 
   if ($("mapBtn")) {
     const url = info.mapUrl || "";
@@ -92,10 +114,12 @@ async function loadEventHeader(eid) {
   const [
     logoUrl,
     bannerUrl,
+    backgroundUrl,
     photos
   ] = await Promise.all([
     dbGet(`/events/${eid}/logo`),
     dbGet(`/events/${eid}/banner`),
+    dbGet(`/events/${eid}/background`),
     dbGet(`/events/${eid}/photos`)
   ]);
 
@@ -104,16 +128,11 @@ async function loadEventHeader(eid) {
 
   const finalLogo   = logoUrl   || "";
   const finalBanner = bannerUrl || "";
-  let   finalBg     = "";
-
-  if (!finalBg) {
-    if (Array.isArray(photos) && photos.length > 0) {
-      // assume photos[] is array of URL strings
-      finalBg = photos[0];
-    } else {
-      finalBg = finalBanner;
-    }
-  }
+  const finalBg = (() => {
+    if (backgroundUrl) return backgroundUrl;
+    if (Array.isArray(photos) && photos.length > 0) return photos[0];
+    return finalBanner;
+  })();
 
   if (logoEl && finalLogo) {
     logoEl.src = finalLogo;

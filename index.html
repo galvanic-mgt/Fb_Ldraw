@@ -15,6 +15,7 @@
 <div id="loginGate" class="overlay" style="display:none"><form id="loginForm" class="card" style="min-width:320px; background:#121a2b; padding:16px"><h3 style="margin-top:0">登入</h3><label>帳號 <input id="loginUser" placeholder="admin"/></label><label>密碼 <input id="loginPass" type="password" placeholder="admin"/></label><div class="bar" style="margin-top:12px"><button class="btn primary" type="submit">進入</button></div></form></div>
 <header><div class="container row"><div class="tabs"><button class="btn primary active" type="button">後台 CMS</button></div>
   <div class="bar" style="margin-left:auto"><button id="themeToggle" class="btn small">☀️ Normal Mode</button>
+<button id="btnLogout" class="btn small danger" type="button">Logout</button>
 <a class="btn btn-public" href="#" id="btnPublicBoard" role="button">Public Board ↗</a>
 <a class="btn btn-tablet" href="./tablet.html" target="_blank" role="button">Tablet View ↗</a>
 <a class="btn primary" id="btnLanding" href="#" role="button">Landing ↗</a>
@@ -35,10 +36,82 @@
 </nav></aside>
 <section class="cms-main">
 
-<section class="card subpage" id="pageEvent"><h3>活動資料</h3><div class="grid-2">
-<label>活動名稱 <input id="metaName"/></label><label>客戶名稱 <input id="metaClient"/></label><label>是否公開 <input id="metaListed" type="checkbox" checked/></label><label>顯示標題 <input id="evTitle"/></label><label>日期時間 <input id="evDateTime"/></label><label>地點名稱 <input id="evVenue"/></label><label>地址 <input id="evAddress"/></label><label>電話欄位名稱 <input id="evLabelPhone" placeholder="手機 / 電話" /></label>
-<label>部門欄位名稱 <input id="evLabelDept"  placeholder="部門 / 描述" /></label>
-<label>Google 地圖連結 <input id="evMapUrl"/></label><label>巴士 <textarea id="evBus" rows="3"></textarea></label><label>地鐵/火車 <textarea id="evTrain" rows="3"></textarea></label><label>泊車 <textarea id="evParking" rows="3"></textarea></label><label>備註 <textarea id="evNotes" rows="3"></textarea></label><button id="saveEventInfo" class="btn primary" type="button">💾 儲存</button></div></section>
+<section class="card subpage" id="pageEvent">
+  <h3>活動資料</h3>
+  <div class="form-grid">
+    <label class="form-field">
+      <span class="form-label">活動名稱</span>
+      <input id="metaName" />
+    </label>
+    <label class="form-field">
+      <span class="form-label">客戶名稱</span>
+      <input id="metaClient" />
+    </label>
+    <label class="form-field form-check">
+      <input id="metaListed" type="checkbox" checked />
+      <span class="form-label">是否公開</span>
+    </label>
+    <label class="form-field">
+      <span class="form-label">顯示標題</span>
+      <input id="evTitle" />
+    </label>
+    <label class="form-field">
+      <span class="form-label">日期時間</span>
+      <input id="evDateTime" />
+    </label>
+    <label class="form-field">
+      <span class="form-label">地點名稱</span>
+      <input id="evVenue" />
+    </label>
+    <label class="form-field">
+      <span class="form-label">地址</span>
+      <input id="evAddress" />
+    </label>
+    <label class="form-field">
+      <span class="form-label">電話欄位名稱</span>
+      <input id="evLabelPhone" placeholder="手機 / 電話" />
+    </label>
+    <label class="form-field">
+      <span class="form-label">代號欄位名稱</span>
+      <input id="evLabelCode" placeholder="代碼 / 員工編號" />
+    </label>
+    <label class="form-field">
+      <span class="form-label">部門欄位名稱</span>
+      <input id="evLabelDept" placeholder="部門 / 描述" />
+    </label>
+    <label class="form-field">
+      <span class="form-label">Google 地圖連結</span>
+      <input id="evMapUrl" />
+    </label>
+    <label class="form-field">
+      <span class="form-label">巴士</span>
+      <textarea id="evBus" rows="3"></textarea>
+    </label>
+    <label class="form-field">
+      <span class="form-label">地鐵/火車</span>
+      <textarea id="evTrain" rows="3"></textarea>
+    </label>
+    <label class="form-field">
+      <span class="form-label">泊車</span>
+      <textarea id="evParking" rows="3"></textarea>
+    </label>
+    <label class="form-field">
+      <span class="form-label">提示標題</span>
+      <input id="evHintTitle" placeholder="例如：活動提示" />
+    </label>
+    <label class="form-field">
+      <span class="form-label">提示內容</span>
+      <textarea id="evHintText" rows="3" placeholder="現場須知、重要提醒…"></textarea>
+    </label>
+    <label class="form-field form-wide">
+      <span class="form-label">備註</span>
+      <textarea id="evNotes" rows="3"></textarea>
+    </label>
+  </div>
+  <div class="form-actions">
+    <button id="saveEventInfo" class="btn primary" type="button">💾 儲存</button>
+  </div>
+</section>
 
 <section class="card subpage" id="pageRoster" style="display:none">
   <h3>名單 / 匯入</h3>
@@ -369,5 +442,7 @@
     });
   }
 </script>
+
+<footer class="app-footer">Developed by Galvanic Management Limited</footer>
 
 </body></html>

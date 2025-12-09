@@ -51,5 +51,17 @@ html,body{margin:0;padding:0;background:var(--lp-bg);color:#eef;font-family:Inte
 }
 @keyframes crown-drop{0%{transform:translateY(-28px) scale(.6);opacity:.0}100%{transform:translateY(-12px) scale(1);opacity:1}}
 
-.lp-banner{width:100%;height:160px;background-size:cover;background-position:center;border-radius:12px;margin:0 auto 12px}
+.lp-banner{
+  width:min(95%, 1200px);
+  height:clamp(160px, 32vw, 160px);
+  background-size:contain;
+  background-position:center;
+  background-repeat:no-repeat;
+  border-radius:16px;
+  margin:0 auto 0;
+}
+.lp-wrap{padding-top:6px}
+.lp-wrap > .lp-card:first-of-type{
+  margin-top:4px;
+}
 .app-footer{text-align:center;font-size:12px;color:rgba(255,255,255,.72);padding:12px 8px 24px;margin:0;}

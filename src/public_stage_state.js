@@ -245,3 +245,4 @@ async function refreshStage() {
 
 // Initial + polling (simple & reliable)
 refreshStage();
+setInterval(refreshStage, 2000);

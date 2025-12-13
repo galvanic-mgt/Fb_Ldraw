@@ -47,15 +47,15 @@
     </section>
 
     <!-- 活動提示（選填） -->
-    <section class="lp-card" id="hintSection">
-      <h3 id="hintTitle">活動提示</h3>
-      <p id="hintText" class="lp-muted">
+    <section class="lp-card">
+      <h3>活動提示</h3>
+      <p class="lp-muted">
         請根據場內指示入座，如有任何問題，歡迎向現場工作人員查詢。
       </p>
     </section>
 
     <!-- 交通資訊（由 /events/{eid}/info 填充） -->
-    <section class="lp-card" id="transportSection">
+    <section class="lp-card">
       <h3>交通資訊</h3>
       <div class="lp-grid-2">
         <div id="busBlock">
@@ -71,12 +71,10 @@
           <p id="evParking" class="lp-muted"></p>
         </div>
       </div>
-    <a id="mapBtn" class="lp-primary lp-link" target="_blank">在地圖打開</a>
-    <p id="evNotes" class="lp-muted" style="margin-top:8px"></p>
-  </section>
-</main>
-
-  <footer class="app-footer">Developed by Galvanic Management Limited</footer>
+      <a id="mapBtn" class="lp-primary lp-link" target="_blank">在地圖打開</a>
+      <p id="evNotes" class="lp-muted" style="margin-top:8px"></p>
+    </section>
+  </main>
 
   <!-- landing.js：負責讀取 Firebase、顯示 LOGO / Banner / 背景、以及報到邏輯 -->
   <script src="./src/landing.js"></script>

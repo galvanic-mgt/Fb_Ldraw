@@ -68,6 +68,35 @@ export async function renderStageDraw(mode){
   const eid = getCurrentEventId();
   if(!eid) return;
 
+  const logoEl      = document.getElementById('stageLogo');
+  const bannerEl    = document.getElementById('stageBanner');
+  const prizeNameEl = document.getElementById('stagePrizeName');
+  const prizeLeftEl = document.getElementById('stagePrizeLeft');
+  const gridEl      = document.getElementById('stageGrid');
+  const overlayEl   = document.getElementById('stageCountdown');
+  const totalLeftEl = document.getElementById('stageTotalLeft');
+  const totalWonEl  = document.getElementById('stageTotalWon');
+  if (overlayEl) overlayEl.classList.remove('is-active'); // start hidden
+
+  const refreshCurrentPrizeHUD = async ()=>{
+    try{
+      const [prizesLatest, curIdLatest] = await Promise.all([
+        getPrizes(eid),
+        getCurrentPrizeIdRemote(eid)
+      ]);
+      const curPrize = (prizesLatest||[]).find(p=>p && p.id===curIdLatest) || null;
+      if (prizeNameEl) prizeNameEl.textContent = curPrize?.name || '—';
+      if (prizeLeftEl) {
+        if (curPrize) {
+          const leftNow = Math.max(0, Number(curPrize.quota||0) - (Array.isArray(curPrize.winners)?curPrize.winners.length:0));
+          prizeLeftEl.textContent = leftNow;
+        } else {
+          prizeLeftEl.textContent = '—';
+        }
+      }
+    }catch(_){}
+  };
+
   // CMS: live-poll stageState so CMS updates when tablet/public draw
   if (mode === 'cms') {
     if (renderStageDraw._cmsTimer) clearInterval(renderStageDraw._cmsTimer);
@@ -78,20 +107,15 @@ export async function renderStageDraw(mode){
         const winnersArray = Array.isArray(state.winners) ? state.winners : Object.values(state.winners);
         renderBatchGridCore(document.getElementById('stageGrid'), winnersArray, 'cms');
         fitWinnerCardText(document.getElementById('stageGrid'), { nameMax: 140, deptMax: 70 });
+        // keep 現正抽獎 + 此獎尚餘 in sync with tablet selection
+        await refreshCurrentPrizeHUD();
       }catch(e){/*ignore*/}
     };
     renderStageDraw._cmsTimer = setInterval(poll, 1200);
+    // Also poll current prize HUD in case there is no stageState update
+    if (renderStageDraw._cmsPrizeTimer) clearInterval(renderStageDraw._cmsPrizeTimer);
+    renderStageDraw._cmsPrizeTimer = setInterval(refreshCurrentPrizeHUD, 1500);
   }
-
-  const logoEl    = document.getElementById('stageLogo');
-  const bannerEl  = document.getElementById('stageBanner');
-  const prizeNameEl = document.getElementById('stagePrizeName');
-  const prizeLeftEl = document.getElementById('stagePrizeLeft');
-  const gridEl    = document.getElementById('stageGrid');
-  const overlayEl = document.getElementById('stageCountdown');
-  const totalLeftEl = document.getElementById('stageTotalLeft');
-  const totalWonEl  = document.getElementById('stageTotalWon');
-  if (overlayEl) overlayEl.classList.remove('is-active'); // start hidden
 
 
   const [info, prizes, curId] = await Promise.all([
@@ -264,4 +288,6 @@ if (exportBtn) exportBtn.onclick = ()=> exportCurrentWinners();
 
   // initial totals
   await updateTotals();
+  // immediate HUD sync for CMS if tablet switches prize without drawing
+  if (mode === 'cms') await refreshCurrentPrizeHUD();
 }

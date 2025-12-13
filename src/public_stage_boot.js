@@ -1,5 +1,4 @@
 // src/public_stage_boot.js
-import { CONFIG } from './config.js';
 import { setCurrentEventId } from './core_firebase.js';
 import { FB } from './fb.js';
 import { renderStageDraw } from './stage_draw_ui.js';
@@ -9,14 +8,6 @@ function getEventId() {
   const u = new URL(location.href);
   return u.searchParams.get('event') || null;
 }
-
-function firebaseUrl(path){
-  const base = (CONFIG.firebaseBase || '').replace(/\/$/, '');
-  return `${base}${path}.json`;
-}
-
-let prizesCache = [];
-let currentPrizeIdCache = null;
 
 /**
  * Load logo / banner / background from RTDB and apply to the stage.
@@ -83,75 +74,27 @@ async function refreshCurrentPrize(eid) {
       FB.get(`/events/${eid}/prizes`).catch(() => []),
       FB.get(`/events/${eid}/currentPrizeId`).catch(() => null)
     ]);
-    prizesCache = Array.isArray(prizes) ? prizes : [];
-    renderCurrentPrize(curId);
+
+    const prize   = (prizes || []).find(p => p && p.id === curId) || null;
+    const nameEl  = document.getElementById('stagePrizeName');
+    const leftEl  = document.getElementById('stagePrizeLeft');
+
+    if (nameEl) {
+      nameEl.textContent = prize ? (prize.name || '—') : '—';
+    }
+
+    if (leftEl) {
+      if (prize) {
+        const quota  = Number(prize.quota || 0);
+        const taken  = Array.isArray(prize.winners) ? prize.winners.length : 0;
+        const left   = Math.max(0, quota - taken);
+        leftEl.textContent = left;
+      } else {
+        leftEl.textContent = '—';
+      }
+    }
   } catch (e) {
     console.warn('[public_stage_boot] refreshCurrentPrize error', e);
-  }
-}
-
-function renderCurrentPrize(curId) {
-  currentPrizeIdCache = curId || null;
-  const prize   = (prizesCache || []).find(p => p && p.id === currentPrizeIdCache) || null;
-  const nameEl  = document.getElementById('stagePrizeName');
-  const leftEl  = document.getElementById('stagePrizeLeft');
-
-  if (nameEl) {
-    nameEl.textContent = prize ? (prize.name || '—') : '—';
-  }
-
-  if (leftEl) {
-    if (prize) {
-      const quota  = Number(prize.quota || 0);
-      const taken  = Array.isArray(prize.winners) ? prize.winners.length : 0;
-      const left   = Math.max(0, quota - taken);
-      leftEl.textContent = left;
-    } else {
-      leftEl.textContent = '—';
-    }
-  }
-}
-
-function subscribePrizeChanges(eid) {
-  if (typeof EventSource === 'undefined') return null;
-  try {
-    const es = new EventSource(firebaseUrl(`/events/${eid}/prizes`));
-    es.onmessage = (ev) => {
-      try {
-        prizesCache = Array.isArray(JSON.parse(ev.data)) ? JSON.parse(ev.data) : [];
-        renderCurrentPrize(currentPrizeIdCache);
-      } catch (e) {
-        // ignore parse errors
-      }
-    };
-    es.onerror = () => {
-      es.close();
-    };
-    return es;
-  } catch (e) {
-    console.warn('[public_stage_boot] prizes EventSource failed, falling back to polling', e);
-    return null;
-  }
-}
-
-function subscribeCurrentPrize(eid) {
-  if (typeof EventSource === 'undefined') return null;
-  try {
-    const es = new EventSource(firebaseUrl(`/events/${eid}/currentPrizeId`));
-    es.onmessage = (ev) => {
-      try {
-        renderCurrentPrize(JSON.parse(ev.data));
-      } catch (e) {
-        // ignore parse errors
-      }
-    };
-    es.onerror = () => {
-      es.close();
-    };
-    return es;
-  } catch (e) {
-    console.warn('[public_stage_boot] currentPrizeId EventSource failed, falling back to polling', e);
-    return null;
   }
 }
 
@@ -184,12 +127,8 @@ async function boot() {
   await refreshAssets(eid);
   await refreshCurrentPrize(eid);
 
-  // Live updates via RTDB streaming when available; fallback to slower polling
-  const esPrize  = subscribePrizeChanges(eid);
-  const esCur    = subscribeCurrentPrize(eid);
-  if (!esCur || !esPrize) {
-    setInterval(() => refreshCurrentPrize(eid), 8000);
-  }
+  // Poll updates
+  setInterval(() => refreshCurrentPrize(eid), 1500);
 
   // Allow manual/on-demand asset refresh (reduces bandwidth)
   if (typeof window !== 'undefined') {

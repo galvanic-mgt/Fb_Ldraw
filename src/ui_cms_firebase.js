@@ -357,52 +357,15 @@ function applyRoleGuard(){
   }
 }
 
-function allowedEventsForUser(){
-  const user = getActiveUser();
-  if (user.role === ROLE_MASTER) return null; // null = all events allowed
-  return Array.isArray(user.events) ? user.events : [];
-}
-function isEventAllowed(eid){
-  if (!eid) return false;
-  const allowed = allowedEventsForUser();
-  return allowed === null ? true : allowed.includes(eid);
-}
-function enforceEventPermission(list = []){
-  const current = getCurrentEventId();
-  const allowedList = (list || []).filter(ev => isEventAllowed(ev.id));
-  if (!allowedList.length) {
-    setCurrentEventId(null);
-    return;
-  }
-  if (!current || !allowedList.some(ev => ev.id === current)) {
-    setCurrentEventId(allowedList[0].id);
-  }
-}
-
-function bindLogout(){
-  const btn = document.getElementById('btnLogout');
-  if (!btn) return;
-  btn.addEventListener('click', ()=>{
-    localStorage.removeItem(ACTIVE_KEY);
-    sessionStorage.removeItem(SESSION_KEY);
-    setCurrentEventId(null);
-    applyRoleGuard();
-    const gate = document.getElementById('loginGate');
-    if (gate) gate.style.display = 'flex';
-  });
-}
-
 function renderUsersUI(){
   const tbody = document.getElementById('userRows');
   const sel = document.getElementById('activeUser');
   if (!tbody || !sel) return;
-  const activeUser = getActiveUser();
-  const isMaster = activeUser.role === ROLE_MASTER;
-  const users = isMaster ? usersCache : usersCache.filter(u => u.id === activeUser.id);
-  const active = activeUser.id;
+  const users = usersCache;
+  const active = getActiveUser().id;
 
   tbody.innerHTML = '';
-  if (isMaster && !users.length) {
+  if (!users.length) {
     const tr = document.createElement('tr');
     tr.innerHTML = '<td colspan="4" class="muted">尚未建立使用者，請使用預設帳號登入：administrator / administrator</td>';
     tbody.appendChild(tr);
@@ -411,72 +374,59 @@ function renderUsersUI(){
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${u.name || ''}<br><small>${u.username || ''}</small></td>
-      <td>${isMaster ? (u.role === ROLE_MASTER ? 'Master' : '名單管理') : ''}</td>
-      <td>${isMaster ? ((u.events||[]).length ? u.events.join(', ') : '全部') : ''}</td>
+      <td>${u.role === ROLE_MASTER ? 'Master' : '名單管理'}</td>
+      <td>${(u.events||[]).length ? u.events.join(', ') : '全部'}</td>
       <td>
-        ${isMaster ? `
-          <button class="btn small" data-edit="${u.id}">編輯</button>
-          <button class="btn small danger" data-del="${u.id}">刪除</button>
-        ` : ''}
+        <button class="btn small" data-edit="${u.id}">編輯</button>
+        <button class="btn small danger" data-del="${u.id}">刪除</button>
       </td>`;
-    if (isMaster) {
-      tr.querySelector('[data-edit]')?.addEventListener('click', async ()=>{
-        if (!requireMasterPassword()) return;
-        const name = prompt('名稱：', u.name || '')?.trim();
-        if (!name) return;
-        const username = prompt('登入帳號：', u.username || '')?.trim();
-        if (!username) return;
-        const password = prompt('登入密碼：', u.password || '')?.trim();
-        if (!password) return;
-        const role = prompt('角色（master / roster）：', u.role || ROLE_ROSTER)?.trim() || ROLE_ROSTER;
-        const eventsRaw = prompt('允許的活動 ID（用逗號分隔，留空=全部）：', (u.events||[]).join(','));
-        const events = eventsRaw ? eventsRaw.split(',').map(s=>s.trim()).filter(Boolean) : [];
-        usersCache = usersCache.map(x => x.id === u.id ? { ...x, name, username, password, role, events } : x);
-        try {
-          await saveUserToDB(usersCache.find(x=>x.id===u.id));
-          renderUsersUI();
-          applyRoleGuard();
-        } catch (err) {
-          console.error('[users] edit failed', err);
-          alert('無法儲存使用者，請確認權限或規則設定。');
-        }
-      });
-      tr.querySelector('[data-del]')?.addEventListener('click', async ()=>{
-        if (!requireMasterPassword()) return;
-        try {
-          await deleteUserFromDB(u.id);
-          if (active === u.id) setActiveUser(usersCache[0]?.id || '');
-          renderUsersUI();
-          applyRoleGuard();
-        } catch (err) {
-          console.error('[users] delete failed', err);
-          alert('無法刪除使用者，請確認權限或規則設定。');
-        }
-      });
-    }
+    tr.querySelector('[data-edit]')?.addEventListener('click', async ()=>{
+      if (!requireMasterPassword()) return;
+      const name = prompt('名稱：', u.name || '')?.trim();
+      if (!name) return;
+      const username = prompt('登入帳號：', u.username || '')?.trim();
+      if (!username) return;
+      const password = prompt('登入密碼：', u.password || '')?.trim();
+      if (!password) return;
+      const role = prompt('角色（master / roster）：', u.role || ROLE_ROSTER)?.trim() || ROLE_ROSTER;
+      const eventsRaw = prompt('允許的活動 ID（用逗號分隔，留空=全部）：', (u.events||[]).join(','));
+      const events = eventsRaw ? eventsRaw.split(',').map(s=>s.trim()).filter(Boolean) : [];
+      usersCache = usersCache.map(x => x.id === u.id ? { ...x, name, username, password, role, events } : x);
+      try {
+        await saveUserToDB(usersCache.find(x=>x.id===u.id));
+        renderUsersUI();
+        applyRoleGuard();
+      } catch (err) {
+        console.error('[users] edit failed', err);
+        alert('無法儲存使用者，請確認權限或規則設定。');
+      }
+    });
+    tr.querySelector('[data-del]')?.addEventListener('click', async ()=>{
+      if (!requireMasterPassword()) return;
+      try {
+        await deleteUserFromDB(u.id);
+        if (active === u.id) setActiveUser(usersCache[0]?.id || '');
+        renderUsersUI();
+        applyRoleGuard();
+      } catch (err) {
+        console.error('[users] delete failed', err);
+        alert('無法刪除使用者，請確認權限或規則設定。');
+      }
+    });
     tbody.appendChild(tr);
   });
 
   sel.innerHTML = '';
-  if (isMaster) {
-    users.forEach(u=>{
-      const opt = document.createElement('option');
-      opt.value = u.id;
-      opt.textContent = `${u.name} (${u.role === ROLE_MASTER ? 'Master' : '名單'})`;
-      if (u.id === active) opt.selected = true;
-      sel.appendChild(opt);
-    });
-    sel.onchange = ()=> setActiveUser(sel.value);
-    if (!active && users[0]) {
-      sel.value = '';
-    }
-  } else {
+  users.forEach(u=>{
     const opt = document.createElement('option');
-    opt.value = activeUser.id;
-    opt.textContent = `${activeUser.name || ''}`;
-    opt.selected = true;
+    opt.value = u.id;
+    opt.textContent = `${u.name} (${u.role === ROLE_MASTER ? 'Master' : '名單'})`;
+    if (u.id === active) opt.selected = true;
     sel.appendChild(opt);
-    sel.disabled = true;
+  });
+  sel.onchange = ()=> setActiveUser(sel.value);
+  if (!active && users[0]) {
+    sel.value = '';
   }
 }
 
@@ -513,7 +463,6 @@ function bindLogin(){
   const gate = document.getElementById('loginGate');
   const form = document.getElementById('loginForm');
   if (!gate || !form) return;
-  gate.style.display = 'flex';
   const userInput = document.getElementById('loginUser');
   const passInput = document.getElementById('loginPass');
   const doLogin = async (u, p)=>{
@@ -531,7 +480,6 @@ function bindLogin(){
       gate.style.display = 'none';
       renderUsersUI();
       applyRoleGuard();
-      enforceEventPermission(await listEvents());
       renderAll?.();
       return true;
     }
@@ -546,13 +494,7 @@ function bindLogin(){
     doLogin(u,p);
   });
   // always require login unless a valid session exists
-  const activeId = getActiveUser()?.id;
-  const activeExists = usersCache.some(u => u.id === activeId);
-  if (!activeExists) {
-    localStorage.removeItem(ACTIVE_KEY);
-    sessionStorage.removeItem(SESSION_KEY);
-  }
-  if (sessionStorage.getItem(SESSION_KEY) === '1' && activeExists) {
+  if (sessionStorage.getItem(SESSION_KEY) === '1' && getActiveUser()?.id) {
     gate.style.display = 'none';
   } else {
     gate.style.display = 'flex';
@@ -592,35 +534,15 @@ function show(targetId){
 async function renderEventList(){
   const listRaw = await listEvents();
   // Only show events where listed !== false
-  const allowAll = getActiveUser()?.role === ROLE_MASTER;
-  const allowedIds = allowedEventsForUser();
-  const list = (listRaw || []).filter(ev =>
-    ev.listed !== false && (allowAll || (allowedIds || []).includes(ev.id))
-  );
+  const list = (listRaw || []).filter(ev => ev.listed !== false);
 
   const el = $('#eventList'); if(!el) return; el.innerHTML = '';
-
-  enforceEventPermission(list);
-
-  if (!list.length) {
-    const empty = document.createElement('div');
-    empty.className = 'event-item';
-    empty.textContent = '未授權查看任何活動';
-    el.appendChild(empty);
-    return;
-  }
 
   list.forEach(ev=>{
     const item = document.createElement('div');
     item.className = 'event-item' + (getCurrentEventId() === ev.id ? ' active' : '');
     item.innerHTML = `<div class="event-name">${ev.name}</div><div class="event-meta">ID: ${ev.id}</div>`;
     item.onclick = async ()=>{
-      if (!isEventAllowed(ev.id)) {
-        alert('沒有權限查看此活動');
-        enforceEventPermission(list);
-        await renderAll();
-        return;
-      }
       const current = getCurrentEventId();
       if (current && current !== ev.id) {
         const ok = confirm(`即將切換到「${ev.name}」活動，確定嗎？`);
@@ -633,29 +555,26 @@ async function renderEventList(){
   });
 
   // Creator stays the same
-  if (allowAll) {
-    const ad = document.createElement('div'); ad.className = 'sidebar-form';
-    ad.innerHTML = `
-      <input id="newEventName" placeholder="新增活動名稱" />
-      <input id="newClientName" placeholder="客戶名稱" />
-      <button id="btnAddEvent" class="btn primary">+ 新活動</button>`;
-    el.appendChild(ad);
+  const ad = document.createElement('div'); ad.className = 'sidebar-form';
+  ad.innerHTML = `
+    <input id="newEventName" placeholder="新增活動名稱" />
+    <input id="newClientName" placeholder="客戶名稱" />
+    <button id="btnAddEvent" class="btn primary">+ 新活動</button>`;
+  el.appendChild(ad);
 
-    ad.querySelector('#btnAddEvent').onclick = async ()=>{
-      const name = ad.querySelector('#newEventName').value.trim();
-      const client = ad.querySelector('#newClientName').value.trim();
-      const id = await createEvent(name, client);
-      setCurrentEventId(id);
-      await renderAll();
-    };
-  }
+  ad.querySelector('#btnAddEvent').onclick = async ()=>{
+    const name = ad.querySelector('#newEventName').value.trim();
+    const client = ad.querySelector('#newClientName').value.trim();
+    const id = await createEvent(name, client);
+    setCurrentEventId(id);
+    await renderAll();
+  };
 }
 async function renderEventInfo(){
   const eid=getCurrentEventId();
   if(!eid)return;const {meta,info}=await getEventInfo(eid);
   const t=(id,val)=>{const e=document.getElementById(id);if(e)e.value=val||'';};
-t('evLabelPhone', info.labelPhone);
-t('evLabelCode',  info.labelCode);
+  t('evLabelPhone', info.labelPhone);
 t('evLabelDept',  info.labelDept);
 t('evTitle',info.title);
 t('evClient',info.client);
@@ -666,8 +585,6 @@ t('evMapUrl',info.mapUrl);
 t('evBus',info.bus);
 t('evTrain',info.train);
 t('evParking',info.parking);
-t('evHintTitle',info.hintTitle);
-t('evHintText',info.hintText);
 t('evNotes',info.notes);
 t('metaName',meta.name);
 t('metaClient',meta.client);
@@ -691,12 +608,9 @@ function bindEventInfoSave(){
       bus:g('evBus'),
       train:g('evTrain'),
       parking:g('evParking'),
-      hintTitle:g('evHintTitle'),
-      hintText:g('evHintText'),
       notes:g('evNotes'),
 
       labelPhone: g('evLabelPhone'),
-      labelCode:  g('evLabelCode'),
       labelDept:  g('evLabelDept')
     });
 
@@ -1799,8 +1713,6 @@ export async function bootCMS(){
 
   // load users from RTDB before rendering UI/login
   await loadUsersFromDB();
-  bindLogout();
-  enforceEventPermission(list);
 
   // small helper: call a binder if it exists; await if it returns a promise
   const maybe = async (fn) => {

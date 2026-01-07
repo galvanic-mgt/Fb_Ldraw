@@ -19,32 +19,43 @@
     .is-public .prize-strip { flex: 0 0 auto !important; height: auto; padding: 0; margin: 0; }
     .is-public .prize-strip .bar { padding: 4px 24px !important; height: auto; }
     .is-public .prize-strip .spacer { flex: 0 0 auto !important; height: 0 !important; }
+    #btnRollMain, #btnRollInstant, #btnClearScreen {
+      font-size: clamp(18px, 2.2vw, 30px);
+      padding: 14px 22px;
+      line-height: 1.2;
+    }
   .is-public #stageLogo {
     width: clamp(18vw, 20vw, 28vw);
     aspect-ratio: 1 / 1;
-    max-height: 22vh;
+    height: 100%;
+    max-height: none;
     background-size: contain !important;
     background-repeat: no-repeat;
     background-position: center;
-    margin-right: 16px;
-    margin-left: 16px;
+    margin: 0;
+    display: grid;
+    place-items: center;
+    place-self: center;
     overflow: hidden;
     position: relative;
     object-fit: contain;
-    align-self: start;
   }
   .is-public #stageBanner {
-    height: clamp(18vh, 24vh, 34vh);
-    max-height: 34vh;
+    height: 100%;
+    max-height: none;
     width: 100%;
     background-size: cover;
     background-repeat: no-repeat;
     background-position: center;
     border-radius: 0px;
+    display: grid;
+    place-items: center;
+    justify-self: stretch;
+    align-self: center;
     overflow: hidden;
     position: relative;
   }
-    .is-public .header { position: relative; display: grid; grid-template-columns: auto 1fr; gap: 20px; padding: 16px 20px; border-radius: 18px; border: 1px solid rgba(255,255,255,.14); overflow: hidden; align-items: center; }
+    .is-public .header { position: relative; display: grid; grid-template-columns: auto 1fr; gap: 20px; padding: 16px 20px; border-radius: 18px; border: 1px solid rgba(255,255,255,.14); overflow: hidden; align-items: center; min-height: clamp(120px, 16vh, 220px); }
     .is-public .header::after { content: ""; position: absolute; inset: 0; background: rgba(0, 0, 0, 0.5); mix-blend-mode: multiply; pointer-events: none; }
     .is-public .header > * { position: relative; z-index: 1; }
     .is-public .winners-area.stage-main { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }

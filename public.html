@@ -91,27 +91,33 @@
 /* PUBLIC VIEW — Logo */
 .is-public #stageLogo {
     width: clamp(220px, 20vw, 340px);
-    height: clamp(160px, 22vh, 320px);  /* responsive: % of viewport */
-    max-height: 15vh;                   /* cap by percentage */
+    height: 100%;
+    max-height: none;
     background-size: contain !important;
     background-repeat: no-repeat;
     background-position: center;
-    margin-right: 24px;
-    margin-left: 32px;
+    margin: 0;
+    display: grid;
+    place-items: center;
+    place-self: center;
     overflow: hidden;           /* keep it inside rounded corners */
     position: relative;
 }
 
 /* PUBLIC VIEW — Banner */
 .is-public #stageBanner {
-    height: clamp(160px, 22vh, 320px);  /* responsive: % of viewport */
-    max-height: 15vh;                  /* cap by percentage */
+    height: 100%;
+    max-height: none;
     width: 100%;          /* let it hog the right side */
     background-size: contain;
     background-repeat: no-repeat;
     background-position: center;
     border-radius: 0px;
     background-size: contain;   /* ⬅️ key line */
+    display: grid;
+    place-items: center;
+    justify-self: stretch;
+    align-self: center;
     overflow: hidden;           /* keep it inside rounded corners */
     position: relative;
 }
@@ -127,6 +133,7 @@
   border: 1px solid rgba(255,255,255,.14);
   overflow: hidden;
   align-items: center;
+  min-height: clamp(120px, 16vh, 220px);
 }
 .is-public .header::after {
   content: "";
@@ -145,7 +152,7 @@
 }
 .is-public .stage-row.header #stageBanner {
   justify-self: stretch;
-  align-self: stretch;
+  align-self: center;
   display: block;              /* override grid centering from .banner-box */
   background-size: cover;      /* fill its area */
   background-position: center; /* keep nice crop */

@@ -51,6 +51,8 @@ async function loadEventHeader(eid) {
   const info = (await dbGet(`/events/${eid}/info`)) || {};
 
   const $ = (id) => document.getElementById(id);
+  const pick = (val, fallback) =>
+    (typeof val === "string" && val.trim() ? val.trim() : fallback);
 
   if ($("evTitle"))     $("evTitle").textContent    = info.title    || "活動";
   if ($("evDateTime"))  $("evDateTime").textContent = info.dateTime || "";
@@ -72,30 +74,65 @@ async function loadEventHeader(eid) {
   if (trainBlock)   trainBlock.style.display   = hasTrain ? '' : 'none';
   if (parkingBlock) parkingBlock.style.display = hasParking ? '' : 'none';
   if ($("evNotes"))     $("evNotes").textContent    = info.notes    || "";
-  // Dynamic labels for check-in
+  // Landing copy (editable via CMS 活動資料)
   const labelPhone = info.labelPhone || "電話";
   const labelDept  = info.labelDept  || "代號";
   const titleEl = document.getElementById("checkinTitle");
   const labelEl = document.getElementById("checkinLabel");
   const inputEl = document.getElementById("codeDigits");
-  if (titleEl) titleEl.textContent = `到場報到（輸入${labelPhone}或${labelDept}）`;
-  if (labelEl) labelEl.textContent = `${labelPhone} / ${labelDept}`;
-  if (inputEl) inputEl.placeholder = `請輸入你的${labelPhone}或${labelDept}`;
+  const btnEl = document.getElementById("checkinButton");
+  const seatTitleEl = document.getElementById("seatTitle");
+  const tipTitleEl = document.getElementById("tipTitle");
+  const tipBodyEl = document.getElementById("tipBody");
+  const transportTitleEl = document.getElementById("transportTitle");
+  const busTitleEl = document.getElementById("busTitle");
+  const trainTitleEl = document.getElementById("trainTitle");
+  const parkingTitleEl = document.getElementById("parkingTitle");
+
+  const defaultCheckinTitle = `到場報到（輸入${labelPhone}或${labelDept}）`;
+  const defaultCheckinLabel = `${labelPhone} / ${labelDept}`;
+  const defaultCheckinPlaceholder = `請輸入你的${labelPhone}或${labelDept}`;
+
+  if (titleEl) titleEl.textContent = pick(info.landingCheckinTitle, defaultCheckinTitle);
+  if (labelEl) labelEl.textContent = pick(info.landingCheckinLabel, defaultCheckinLabel);
+  if (inputEl) inputEl.placeholder = pick(info.landingCheckinPlaceholder, defaultCheckinPlaceholder);
+  if (btnEl) btnEl.textContent = pick(info.landingCheckinButton, "報到");
+  if (seatTitleEl) seatTitleEl.textContent = pick(info.landingSeatTitle, "歡迎！你的座位安排");
+  if (tipTitleEl) tipTitleEl.textContent = pick(info.landingTipTitle, "活動提示");
+  if (tipBodyEl) tipBodyEl.textContent = pick(
+    info.landingTipBody,
+    "請根據場內指示入座，如有任何問題，歡迎向現場工作人員查詢。"
+  );
+  if (transportTitleEl) transportTitleEl.textContent = pick(info.landingTransportTitle, "交通資訊");
+  if (busTitleEl) busTitleEl.textContent = pick(info.landingBusTitle, "巴士");
+  if (trainTitleEl) trainTitleEl.textContent = pick(info.landingTrainTitle, "地鐵 / 火車");
+  if (parkingTitleEl) parkingTitleEl.textContent = pick(info.landingParkingTitle, "泊車");
+
+  const pageTitle = pick(info.landingPageTitle, "");
+  if (pageTitle) document.title = pageTitle;
 
   if ($("mapBtn")) {
+    $("mapBtn").textContent = pick(info.landingMapButton, "在地圖打開");
     const url = info.mapUrl || "";
     $("mapBtn").style.display = url ? "inline-flex" : "none";
     if (url) $("mapBtn").href = url;
   }
+  const transportSection = document.getElementById("transportSection");
+  const hasNotes = Boolean((info.notes || "").trim());
+  const hasMap = Boolean((info.mapUrl || "").trim());
+  const hasTransport = hasBus || hasTrain || hasParking || hasNotes || hasMap;
+  if (transportSection) transportSection.style.display = hasTransport ? "" : "none";
 
   // Load assets for logo / banner / background.
   const [
     logoUrl,
     bannerUrl,
+    backgroundUrl,
     photos
   ] = await Promise.all([
     dbGet(`/events/${eid}/logo`),
     dbGet(`/events/${eid}/banner`),
+    dbGet(`/events/${eid}/background`),
     dbGet(`/events/${eid}/photos`)
   ]);
 
@@ -104,7 +141,7 @@ async function loadEventHeader(eid) {
 
   const finalLogo   = logoUrl   || "";
   const finalBanner = bannerUrl || "";
-  let   finalBg     = "";
+  let   finalBg     = backgroundUrl || "";
 
   if (!finalBg) {
     if (Array.isArray(photos) && photos.length > 0) {

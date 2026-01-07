@@ -154,14 +154,17 @@ function bindLandingButton(){
 function bindExternalLinks(){
   const pub = document.getElementById('btnPublicBoard');
   const tab = document.querySelector('a[href$="tablet.html"]');
-  const sync = ()=>{
-    const eid = getCurrentEventId();
-    if (!eid) return;
-    if (pub) pub.href = publicBoardLink(eid);
-    if (tab) tab.href = tabletLink(eid);
-  };
+  const sync = ()=>updateExternalLinks(pub, tab);
   sync();
   window.addEventListener('popstate', sync);
+}
+function updateExternalLinks(pub, tab){
+  const eid = getCurrentEventId();
+  if (!eid) return;
+  const pubEl = pub || document.getElementById('btnPublicBoard');
+  const tabEl = tab || document.querySelector('a[href$="tablet.html"]');
+  if (pubEl) pubEl.href = publicBoardLink(eid);
+  if (tabEl) tabEl.href = tabletLink(eid);
 }
 
 
@@ -586,6 +589,19 @@ t('evBus',info.bus);
 t('evTrain',info.train);
 t('evParking',info.parking);
 t('evNotes',info.notes);
+t('landingPageTitle',info.landingPageTitle);
+t('landingCheckinTitle',info.landingCheckinTitle);
+t('landingCheckinLabel',info.landingCheckinLabel);
+t('landingCheckinPlaceholder',info.landingCheckinPlaceholder);
+t('landingCheckinButton',info.landingCheckinButton);
+t('landingSeatTitle',info.landingSeatTitle);
+t('landingTipTitle',info.landingTipTitle);
+t('landingTipBody',info.landingTipBody);
+t('landingTransportTitle',info.landingTransportTitle);
+t('landingBusTitle',info.landingBusTitle);
+t('landingTrainTitle',info.landingTrainTitle);
+t('landingParkingTitle',info.landingParkingTitle);
+t('landingMapButton',info.landingMapButton);
 t('metaName',meta.name);
 t('metaClient',meta.client);
 { const el=document.getElementById('metaListed');
@@ -610,6 +626,20 @@ function bindEventInfoSave(){
       parking:g('evParking'),
       notes:g('evNotes'),
 
+      landingPageTitle: g('landingPageTitle'),
+      landingCheckinTitle: g('landingCheckinTitle'),
+      landingCheckinLabel: g('landingCheckinLabel'),
+      landingCheckinPlaceholder: g('landingCheckinPlaceholder'),
+      landingCheckinButton: g('landingCheckinButton'),
+      landingSeatTitle: g('landingSeatTitle'),
+      landingTipTitle: g('landingTipTitle'),
+      landingTipBody: g('landingTipBody'),
+      landingTransportTitle: g('landingTransportTitle'),
+      landingBusTitle: g('landingBusTitle'),
+      landingTrainTitle: g('landingTrainTitle'),
+      landingParkingTitle: g('landingParkingTitle'),
+      landingMapButton: g('landingMapButton'),
+
       labelPhone: g('evLabelPhone'),
       labelDept:  g('evLabelDept')
     });
@@ -623,6 +653,79 @@ function bindEventInfoSave(){
     await renderAll();
   });
 }
+function updateRosterCounters(list = []){
+  const total = Array.isArray(list) ? list.length : 0;
+  const checked = Array.isArray(list) ? list.filter(p => p && p.checkedIn).length : 0;
+  const totalEl = document.getElementById('rosterCount');
+  const chkEl   = document.getElementById('rosterChecked');
+  if (totalEl) totalEl.textContent = `共 ${total} 人`;
+  if (chkEl)   chkEl.textContent   = `已報到：${checked} 人`;
+}
+function setRosterSyncStatus(text){
+  const el = document.getElementById('rosterSync');
+  if (!el) return;
+  el.textContent = text;
+}
+async function setPeopleWithSync(eid, people){
+  setRosterSyncStatus('更新中…');
+  try {
+    await setPeople(eid, people);
+    setRosterSyncStatus('已更新');
+  } catch (err) {
+    console.error('[roster] sync failed', err);
+    setRosterSyncStatus('更新失敗');
+    throw err;
+  }
+}
+function makeLogKey(){
+  return `t${Date.now().toString(36)}${Math.random().toString(36).slice(2,6)}`;
+}
+async function logAttendanceChange(eid, person, checkedIn){
+  if (!eid || !person) return;
+  const entry = {
+    ts: Date.now(),
+    action: checkedIn ? 'checkin' : 'cancel',
+    name: person.name || '',
+    phone: person.phone || '',
+    code: person.code || '',
+    dept: person.dept || '',
+    table: person.table || '',
+    seat: person.seat || ''
+  };
+  const key = makeLogKey();
+  try {
+    await FB.patch(`/events/${eid}/attendance_log`, { [key]: entry });
+  } catch (err) {
+    console.warn('[roster] attendance log failed', err);
+  }
+}
+function csvEscape(val){
+  const s = String(val ?? '');
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s;
+}
+async function exportAttendanceLog(eid){
+  const raw = (await FB.get(`/events/${eid}/attendance_log`)) || {};
+  const list = Array.isArray(raw) ? raw.filter(Boolean) : Object.values(raw || {});
+  list.sort((a,b)=>(a?.ts||0)-(b?.ts||0));
+  const header = ['timestamp','action','name','phone','code','dept','table','seat'];
+  const rows = [header.join(',')];
+  list.forEach(entry=>{
+    const ts = entry?.ts ? new Date(entry.ts).toISOString() : '';
+    const action = entry?.action === 'cancel' ? '取消' : '出席';
+    rows.push([
+      ts,
+      action,
+      entry?.name || '',
+      entry?.phone || '',
+      entry?.code || '',
+      entry?.dept || '',
+      entry?.table || '',
+      entry?.seat || ''
+    ].map(csvEscape).join(','));
+  });
+  return rows.join('\n');
+}
+
 async function renderRoster(){
   const eid = getCurrentEventId(); if(!eid) return;
 
@@ -638,6 +741,7 @@ async function renderRoster(){
   // data
   const people = await getPeople(eid);
   rosterState.cache = people;
+  updateRosterCounters(people);
 
   // filter
   const q = (document.getElementById('searchGuest')?.value || '').toLowerCase();
@@ -666,6 +770,22 @@ async function renderRoster(){
   rosterState.page = Math.min(Math.max(1, rosterState.page), totalPages);
   const start = (rosterState.page - 1) * rosterState.pageSize;
   const pageSlice = list.slice(start, start + rosterState.pageSize);
+  const checkAll = document.getElementById('rosterCheckAll');
+  if (checkAll) {
+    const checkedCount = pageSlice.filter(p => p && p.checkedIn).length;
+    checkAll.checked = pageSlice.length > 0 && checkedCount === pageSlice.length;
+    checkAll.indeterminate = checkedCount > 0 && checkedCount < pageSlice.length;
+    checkAll.onchange = async (e)=>{
+      const next = e.target.checked;
+      const changed = pageSlice.filter(p => p && p.checkedIn !== next);
+      if (changed.length === 0) return;
+      changed.forEach(p=>{ p.checkedIn = next; });
+      await setPeopleWithSync(eid, people);
+      await Promise.all(changed.map(p=>logAttendanceChange(eid, p, next)));
+      updateRosterCounters(people);
+      await renderRoster();
+    };
+  }
 
   // render table
   const tbody = document.getElementById('guestTbody');
@@ -689,8 +809,12 @@ function renderRow(tr, p, idx, mode){
     `;
     // checkbox persists immediately
     tr.querySelector('td input[type="checkbox"]').onchange = async (e)=>{
-      p.checkedIn = e.target.checked;
-      await setPeople(eid, people);
+      const next = e.target.checked;
+      if (p.checkedIn === next) return;
+      p.checkedIn = next;
+      await setPeopleWithSync(eid, people);
+      await logAttendanceChange(eid, p, next);
+      updateRosterCounters(people);
     };
     const doSave = async ()=>{
       const v = sel => tr.querySelector(sel)?.value?.trim() || '';
@@ -700,7 +824,7 @@ function renderRow(tr, p, idx, mode){
       p.code  = v('.in.code');
       p.table = v('.in.table');
       p.seat  = v('.in.seat');
-      await setPeople(eid, people);
+      await setPeopleWithSync(eid, people);
       renderRow(tr, p, idx, 'view');
     };
     tr.querySelector('.save').onclick = doSave;
@@ -728,8 +852,12 @@ function renderRow(tr, p, idx, mode){
       </td>
     `;
     tr.querySelector('td input[type="checkbox"]').onchange = async (e)=>{
-      p.checkedIn = e.target.checked;
-      await setPeople(eid, people);
+      const next = e.target.checked;
+      if (p.checkedIn === next) return;
+      p.checkedIn = next;
+      await setPeopleWithSync(eid, people);
+      await logAttendanceChange(eid, p, next);
+      updateRosterCounters(people);
     };
     tr.querySelector('.edit').onclick = ()=> renderRow(tr, p, idx, 'edit');
     // Double-click row to jump into edit mode for on-the-go changes
@@ -757,14 +885,14 @@ function renderRow(tr, p, idx, mode){
       if (changed) await setPrizes(eidNow, prizes);
       // clear local prize flag on this person
       p.prize = '';
-      await setPeople(eidNow, people);
+      await setPeopleWithSync(eidNow, people);
       await renderRoster();
     });
     tr.querySelector('.delete').onclick = async ()=>{
       const ok = confirm(`確定刪除「${p.name||''}」？`);
       if(!ok) return;
       people.splice(idx, 1);
-      await setPeople(eid, people);
+      await setPeopleWithSync(eid, people);
       await renderRoster();
     };
   }
@@ -778,7 +906,6 @@ pageSlice.forEach((p, iOnPage)=>{
 
 
   // counters & paging UI
-  { const el=document.getElementById('rosterCount'); if(el) el.textContent = `共 ${people.length} 人`; }
   { const el=document.getElementById('pageInfo'); if(el) el.textContent = `${rosterState.page} / ${totalPages}`; }
 
   // enable/disable prev/next
@@ -803,13 +930,21 @@ function bindRoster(){
     a.download = 'roster.csv';
     a.click();
   });
+  document.getElementById('btnExportAttendanceLog')?.addEventListener('click', async ()=>{
+    const eid = getCurrentEventId(); if(!eid) return;
+    const csv = await exportAttendanceLog(eid);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv], { type:'text/csv;charset=utf-8;' }));
+    a.download = 'attendance_log.csv';
+    a.click();
+  });
 
   // Delete all
   document.getElementById('btnDeleteAllRoster')?.addEventListener('click', async ()=>{
     const eid = getCurrentEventId(); if(!eid) return;
     const ok = confirm('確定要清空全部名單？此動作無法復原。');
     if(!ok) return;
-    await setPeople(eid, []);
+    await setPeopleWithSync(eid, []);
     rosterState.page = 1;
     await renderRoster();
   });
@@ -837,7 +972,7 @@ function bindRoster(){
       checkedIn: !!checkedIn,
       prize: ''
     });
-    await setPeople(eid, people);
+    await setPeopleWithSync(eid, people);
     rosterState.page = 1;
     await renderRoster();
   });
@@ -1701,6 +1836,7 @@ export async function renderAll(){
   await renderPolls();
   await renderPollManager();   // keep poll manager in sync when switching events
   await bindPollPicker();      // refresh poll picker options for current event
+  updateExternalLinks();
 }
 export async function bootCMS(){
   

@@ -248,7 +248,8 @@ function attachCheckin(eid) {
             .join(" · ")
         : "";
 
-      showMessage(`✅ 已為 ${name || "來賓"} 登記出席，歡迎！`, false);
+      const successMsg = `✅ 已為 ${name || "來賓"} 登記出席，歡迎！`;
+      showMessage(successMsg, false);
 
       if (seatCard && seatInfoEl) {
         if (seatStr) {
@@ -258,6 +259,8 @@ function attachCheckin(eid) {
           seatCard.style.display = "none";
         }
       }
+      const popupMsg = seatStr ? `${successMsg}\n${seatStr}` : successMsg;
+      alert(popupMsg);
 
       // Optional: clear input after success
       input.value = "";

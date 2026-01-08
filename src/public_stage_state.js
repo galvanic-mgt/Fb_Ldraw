@@ -86,7 +86,7 @@ function renderResultsStep(grid){
             <div class="rBar">
               <div class="crown">${i === items.length - 1 ? '👑' : ''}</div>
               <div class="rFillWrap"><div class="rFill" data-count="${it.count}" data-target="${Math.max(6, Math.round((it.count / max) * 100))}"></div></div>
-              <div class="rLabel">${it.text}</div>
+              <div class="rLabel" data-text="${it.text}"></div>
               <div class="rCount"></div>
             </div>
           `).join('')}
@@ -101,6 +101,7 @@ function renderResultsStep(grid){
   bars.forEach((bar, i) => {
     const fill = bar.querySelector('.rFill');
     const countEl = bar.querySelector('.rCount');
+    const labelEl = bar.querySelector('.rLabel');
     const crown = bar.querySelector('.crown');
     const target = Number(fill?.dataset.target || 0);
     if (i <= idx) {
@@ -108,10 +109,12 @@ function renderResultsStep(grid){
         fill.style.height = '0%';
         requestAnimationFrame(() => { fill.style.height = target + '%'; });
       }
+      if (labelEl) labelEl.textContent = labelEl.dataset.text || '';
       if (countEl) countEl.textContent = `${items[i].count} 票`;
       if (crown) crown.style.opacity = i === items.length - 1 ? 1 : 0;
     } else {
       if (fill) fill.style.height = '0%';
+      if (labelEl) labelEl.textContent = '';
       if (countEl) countEl.textContent = '';
       if (crown) crown.style.opacity = 0;
     }

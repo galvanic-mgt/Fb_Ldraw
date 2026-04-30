@@ -77,6 +77,22 @@ function renderBars(poll){
   });
 }
 
+function playResultSound(step = 0){
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.frequency.value = 520 + step * 40;
+    gain.gain.value = 0.04;
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.12);
+  } catch (_) {}
+}
+
 async function playResultsAnimation(poll){
   const chart = document.getElementById('resultChart');
   const wrap = document.getElementById('resultArea');
@@ -91,8 +107,12 @@ async function playResultsAnimation(poll){
     count: Number(votes[o.id] || 0)
   }));
 
-  // sort ascending by votes (least first)
-  opts.sort((a,b)=>a.count - b.count);
+  // Reveal in fixed BU/order sequence. The CMS option order is the default BU order.
+  // If a poll has resultOrder: ["optionId"], use that explicit order.
+  if (Array.isArray(poll.resultOrder) && poll.resultOrder.length) {
+    const order = new Map(poll.resultOrder.map((id, i) => [id, i]));
+    opts.sort((a, b) => (order.get(a.id) ?? 9999) - (order.get(b.id) ?? 9999));
+  }
 
   wrap.classList.remove('hidden');
   chart.innerHTML = '';
@@ -126,6 +146,7 @@ async function playResultsAnimation(poll){
     fill.style.height = Math.max(8, pct * 2) + 'px'; // scale height
     if (countEl) countEl.textContent = `${count} 票`;
     if (i === fills.length - 1 && crown) crown.style.opacity = '1';
+    playResultSound(i);
 
     await new Promise(r => setTimeout(r, 900));
   }

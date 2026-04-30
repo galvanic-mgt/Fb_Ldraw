@@ -1,4 +1,5 @@
 import { getCurrentEventId, getPeople, setPeople, getEventInfo, getPrizes } from './core_firebase.js';
+import { FB } from './fb.js';
 
 export function normalizeName(s){ return (s || '').trim().replace(/\s+/g,' '); }
 
@@ -87,10 +88,11 @@ export function handleImportCSV(file, cb){
 // -------- Export --------
 export async function exportCSV(){
   const eid = getCurrentEventId();
-  const [info, people, prizes] = await Promise.all([
+  const [info, people, prizes, rewardRounds] = await Promise.all([
     (await getEventInfo(eid)).info || {},
     getPeople(eid),
-    getPrizes(eid)
+    getPrizes(eid),
+    FB.get(`/events/${eid}/ui/rewardRounds`).catch(()=>({}))
   ]);
 
   const labelPhone = info.labelPhone || 'Phone';
@@ -100,13 +102,26 @@ export async function exportCSV(){
   const prizeMap = new Map();
   (prizes || []).forEach(p=>{
     (p.winners || []).forEach(w=>{
-      const key = `${w.name}||${w.dept||''}`;
+      const key = w?.phone ? `phone:${w.phone}` : `${w.name}||${w.dept||''}`;
       prizeMap.set(key, p.name || '');
     });
   });
 
+  const safeRewardRounds = rewardRounds && !rewardRounds.error ? rewardRounds : {};
+  const roundEntries = Object.entries(safeRewardRounds || {}).map(([id, round]) => ({
+    id,
+    name: (round && round.name) || id
+  }));
+  const roundIdsFromPeople = new Set();
+  (people || []).forEach(p => {
+    Object.keys(p?.rewardRounds || {}).forEach(id => roundIdsFromPeople.add(id));
+  });
+  roundIdsFromPeople.forEach(id => {
+    if (!roundEntries.some(r => r.id === id)) roundEntries.push({ id, name: id });
+  });
+
   const rows = [
-    ['Code', labelPhone, 'Name', labelDept, 'Table', 'Seat', 'Present', 'LuckyPrize'],
+    ['Code', labelPhone, 'Name', labelDept, 'Table', 'Seat', 'Present', 'LuckyPrize', ...roundEntries.map(r => r.name)],
     ...people.map(p=>[
       p.code || '',
       p.phone || '',
@@ -115,7 +130,8 @@ export async function exportCSV(){
       p.table || '',
       p.seat || '',
       p.checkedIn ? 1 : 0,
-      prizeMap.get(`${p.name}||${p.dept||''}`) || p.prize || ''
+      prizeMap.get(p.phone ? `phone:${p.phone}` : `${p.name}||${p.dept||''}`) || p.prize || '',
+      ...roundEntries.map(r => (p.rewardRounds && p.rewardRounds[r.id]) || '')
     ])
   ];
 

@@ -36,6 +36,13 @@ export const drawState = {
   animating: false
 };
 
+function winnerKey(p){
+  const name  = (p?.name  || '').trim();
+  const dept  = (p?.dept  || '').trim();
+  const phone = (p?.phone || '').trim();
+  return phone ? `phone:${phone}` : `name:${name}||${dept}`;
+}
+
 // --- Helpers ---
 function sleep(ms){ return new Promise(r=>setTimeout(r, ms)); }
 
@@ -61,7 +68,7 @@ export function fireConfettiAtCards(cards){  // cards: NodeListOf<HTMLElement>
   });
 }
 
-function fitSingleLine(el, { max = 96, min = 16, horizPadding = 24 } = {}) {
+export function fitSingleLine(el, { max = 120, min = 24, horizPadding = 24 } = {}) {
   if (!el || !el.parentElement) return;
   // start big
   let size = max;
@@ -86,11 +93,13 @@ function fitSingleLine(el, { max = 96, min = 16, horizPadding = 24 } = {}) {
   }
 }
 
-function fitWinnerCardText(root) {
+export function fitWinnerCardText(root, opts = {}) {
+  const nameMax = typeof opts.nameMax === 'number' ? opts.nameMax : 120;
+  const deptMax = typeof opts.deptMax === 'number' ? opts.deptMax : 40;
   const cards = root ? root.querySelectorAll('.winner-card') : [];
   cards.forEach(card => {
-    fitSingleLine(card.querySelector('.name'), { max: 96, min: 28, horizPadding: 24 });
-    fitSingleLine(card.querySelector('.dept'), { max: 36, min: 16, horizPadding: 24 });
+    fitSingleLine(card.querySelector('.name'), { max: nameMax, min: 28, horizPadding: 24 });
+    fitSingleLine(card.querySelector('.dept'), { max: deptMax, min: 16, horizPadding: 24 });
   });
 }
 
@@ -103,7 +112,15 @@ export function renderBatchGrid(gridEl, batch, mode){
   if (!gridEl) return;
   gridEl.innerHTML = '';
 
-  const single = Array.isArray(batch) && batch.length === 1;
+  const count = Math.max(0, Array.isArray(batch) ? batch.length : 0);
+  const capped = Math.min(10, Math.max(1, count || 1));
+
+  // apply winners-N class for layout (1–10)
+  const prev = Array.from(gridEl.classList).filter(c => /^winners-\d+$/.test(c));
+  prev.forEach(c => gridEl.classList.remove(c));
+  gridEl.classList.add(`winners-${capped}`);
+
+  const single = capped === 1;
   if (single) {
     gridEl.style.gridTemplateColumns = '1fr';
     gridEl.style.placeItems = 'center';
@@ -124,6 +141,10 @@ export function renderBatchGrid(gridEl, batch, mode){
     `;
     gridEl.appendChild(card);
   });
+
+  // Fit text to each card after render (tighter caps for CMS)
+  const fitOpts = (mode === 'cms' || mode === 'tablet') ? { nameMax: 140, deptMax: 70 } : {};
+  fitWinnerCardText(gridEl, fitOpts);
 }
 
 /* ============================================================
@@ -152,11 +173,11 @@ export async function renderRerollLog(){
    Grid click delegation — reroll only the clicked slot
    Call once after the CMS page mounts
 ============================================================ */
-let _gridBound = false;
+let _gridBoundMode = null;
 export function bindStageGridDelegation(mode='cms'){
-  if (_gridBound) return;
   const gridEl = document.getElementById('stageGrid');
   if (!gridEl) return;
+  if (_gridBoundMode === mode) return;
 
   gridEl.addEventListener('click', async (ev) => {
     const b = ev.target.closest('.btn-reroll');
@@ -174,19 +195,25 @@ export function bindStageGridDelegation(mode='cms'){
     }
   });
 
-  _gridBound = true;
+  _gridBoundMode = mode;
 }
 
 /* ============================================================
    Draw batch (1–10). Saves to DB via coreDrawBatch.
 ============================================================ */
 export async function performDraw(batchSize, hooks){
-  const { overlayEl, gridEl, afterRender } = hooks || {};
+  const { overlayEl, gridEl, afterRender, skipCountdown } = hooks || {};
   if(drawState.animating) return;
   drawState.animating = true;
 
   try{
-    await countdown321(overlayEl);
+    if (skipCountdown && typeof window !== 'undefined') {
+      window.__skipCountdownFlag = true;
+    }
+    if (!skipCountdown) {
+      await countdown321(overlayEl);
+    }
+
 
     const { batch } = await coreDrawBatch(
       Math.min(10, Math.max(1, Number(batchSize)||1))
@@ -225,8 +252,27 @@ export async function rerollOne(slotIndex, hooks){
   const cur = (prizes || []).find(p => p && p.id === curId);
   if (!cur || !Array.isArray(cur.winners) || !cur.winners[slotIndex]) return;
 
+  // Try to map the clicked slot to the actual winners array using lastBatch
+  let targetIdx = -1;
+  const target = Array.isArray(drawState.lastBatch) ? drawState.lastBatch[slotIndex] : null;
+  if (target) {
+    // prefer the last occurrence (most recent) to avoid touching older duplicates
+    for (let i = cur.winners.length - 1; i >= 0; i--) {
+      const w = cur.winners[i];
+      if (winnerKey(w) === winnerKey(target)) {
+        targetIdx = i;
+        break;
+      }
+    }
+  }
+  if (targetIdx < 0) {
+    // fallback to the slot index if mapping failed
+    targetIdx = slotIndex;
+  }
+  if (!cur.winners[targetIdx]) return;
+
   // Remove that exact winner and persist
-  const removed = cur.winners.splice(slotIndex, 1)[0];
+  const removed = cur.winners.splice(targetIdx, 1)[0];
   await setPrizes(eid, prizes);
 
   // Clear their people[].prize if it matched current prize
@@ -247,7 +293,8 @@ export async function rerollOne(slotIndex, hooks){
   if (changed) await setPeople(eid, people);
 
   // Draw exactly ONE replacement and persist via core
-  const res = await coreDrawBatch(1);   // <-- fixed: use coreDrawBatch
+  const excludeKey = winnerKey(removed);
+  const res = await coreDrawBatch(1, { excludeKeys: [excludeKey] });   // avoid picking the same person
   const replacement = (res && res.batch && res.batch[0]) ? res.batch[0] : null;
 
   // Log reroll (best-effort)
@@ -255,8 +302,8 @@ export async function rerollOne(slotIndex, hooks){
     await addRerollLog(eid, {
       prizeId: cur.id,
       prizeName: cur.name || '',
-      replaced:   { name: removed.name, dept: removed.dept || '' },
-      replacement: replacement ? { name: replacement.name, dept: replacement.dept || '' } : null
+      replaced:   { name: removed.name, dept: removed.dept || '', phone: removed.phone || '' },
+      replacement: replacement ? { name: replacement.name, dept: replacement.dept || '', phone: replacement.phone || '' } : null
     });
   } catch (e) {
     console.warn('[reroll] log failed', e);
@@ -277,9 +324,58 @@ export async function rerollOne(slotIndex, hooks){
 }
 
 // --- Clear only the screen batch (keep DB winners) ---
-export function clearScreenResults(gridEl){
+export async function clearScreenResults(gridEl){
   drawState.lastBatch = [];
   if(gridEl) gridEl.innerHTML = '';
+  try {
+    const eid = getCurrentEventId();
+    if (eid && FB?.patch) {
+      await FB.patch(`/events/${eid}/ui/stageState`, null);
+      await FB.patch(`/events/${eid}/ui`, { skipCountdown: false });
+    }
+  } catch (e) {
+    console.warn('[clearScreenResults] failed to clear public state', e);
+  }
+}
+
+// --- Undo the most recent draw batch (remove winners + clear their prize) ---
+export async function undoLastDraw(){
+  const batch = Array.isArray(drawState.lastBatch) ? drawState.lastBatch : [];
+  if (!batch.length) throw new Error('目前沒有可以復原的抽獎');
+
+  const eid = getCurrentEventId();
+  if (!eid) throw new Error('尚未選擇活動');
+
+  const [people, prizes, curId] = await Promise.all([
+    getPeople(eid),
+    getPrizes(eid),
+    getCurrentPrizeIdRemote(eid)
+  ]);
+  const cur = (prizes || []).find(p => p && p.id === curId);
+  if (!cur) throw new Error('尚未選擇抽獎項目');
+
+  const keys = new Set(batch.map(w => winnerKey(w)));
+
+  // Remove those winners from current prize
+  const before = Array.isArray(cur.winners) ? cur.winners.length : 0;
+  cur.winners = (cur.winners || []).filter(w => !keys.has(winnerKey(w)));
+  const removed = before - cur.winners.length;
+  await setPrizes(eid, prizes);
+
+  // Clear prize on people for those winners (only if it matches this prize)
+  const prizeName = cur.name || '';
+  const peopleUpdated = (people || []).map(p => {
+    if (!p) return p;
+    const k = winnerKey(p);
+    if (keys.has(k) && (p.prize || '') === prizeName) {
+      return { ...p, prize: '' };
+    }
+    return p;
+  });
+  await setPeople(eid, peopleUpdated);
+
+  drawState.lastBatch = [];
+  return { removed };
 }
 
 // --- Export current prize winners as CSV ---

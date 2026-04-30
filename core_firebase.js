@@ -15,8 +15,49 @@ export async function getCurrentPrizeIdRemote(id){return await FB.get(`/events/$
 export async function setCurrentPrizeIdRemote(id,pid){return await FB.put(`/events/${id}/currentPrizeId`,pid||null);}
 export async function getQuestions(id){return (await FB.get(`/events/${id}/questions`))||[];}
 export async function setQuestions(id,arr){return await FB.put(`/events/${id}/questions`,arr||[]);}
-export async function getAssets(id){const [banner,logo,photos]=await Promise.all([FB.get(`/events/${id}/banner`),FB.get(`/events/${id}/logo`),FB.get(`/events/${id}/photos`)]);return {banner:banner||'',logo:logo||'',photos:photos||[]};}
-export async function setAssets(id,{banner,logo,photos}){if(banner!==undefined)await FB.put(`/events/${id}/banner`,banner);if(logo!==undefined)await FB.put(`/events/${id}/logo`,logo);if(photos!==undefined)await FB.put(`/events/${id}/photos`,photos||[]);}
+export async function getAssets(id){
+  const clean = (v)=> typeof v === 'string'
+    ? v.trim()
+    : (v && typeof v.url === 'string' ? v.url.trim() : '');
+
+  const [bannerRaw, logoRaw, backgroundRaw, photos] = await Promise.all([
+    FB.get(`/events/${id}/banner`),
+    FB.get(`/events/${id}/logo`),
+    FB.get(`/events/${id}/background`),
+    FB.get(`/events/${id}/photos`)
+  ]);
+
+  return {
+    banner: clean(bannerRaw),
+    logo: clean(logoRaw),
+    background: clean(backgroundRaw),
+    photos: Array.isArray(photos) ? photos : []
+  };
+}
+
+export async function setAssets(id, assets){
+  const {
+    banner,
+    logo,
+    background,
+    photos
+  } = assets || {};
+
+  if (banner !== undefined) {
+    await FB.put(`/events/${id}/banner`, banner || '');
+  }
+  if (logo !== undefined) {
+    await FB.put(`/events/${id}/logo`, logo || '');
+  }
+  if (background !== undefined) {
+    await FB.put(`/events/${id}/background`, background || '');
+  }
+
+  if (photos !== undefined) {
+    await FB.put(`/events/${id}/photos`, photos || []);
+  }
+}
+
 export async function getPolls(id){return (await FB.get(`/events/${id}/polls`))||{};}
 export async function setPoll(id,poll){return await FB.put(`/events/${id}/polls/${poll.id}`,poll);}
 export async function deleteEvent(id){

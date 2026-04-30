@@ -43,6 +43,13 @@
     .error { color:#ff9d9d; margin-top:4px }
     .hidden { display:none }
     .status-wrap { background: var(--panel-bg); border:1px solid var(--border); border-radius:12px; padding:12px; }
+    .vote-login { display:grid; grid-template-columns: 1fr auto; gap:8px; background: var(--panel-bg); border:1px solid var(--border); border-radius:12px; padding:12px; }
+    .vote-login input { min-height:44px; border-radius:10px; border:1px solid var(--border); padding:10px 12px; font:inherit; }
+    .vote-login button, .confirm-bar button { min-height:44px; border:0; border-radius:10px; padding:10px 14px; font:inherit; font-weight:800; cursor:pointer; background:var(--accent); color:#000; }
+    .confirm-bar { display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap; background: var(--panel-bg); border:1px solid var(--border); border-radius:12px; padding:12px; }
+    .confirm-bar.hidden { display:none; }
+    .opt-card.selected { outline:3px solid var(--accent); background:#fff; }
+    @media (max-width: 620px){ .vote-login{ grid-template-columns:1fr; } }
   </style>
 </head>
 <body>
@@ -63,7 +70,17 @@
       <div class="tab active">我要投票</div>
     </div>
 
+    <form id="identityForm" class="vote-login">
+      <input id="batchInput" autocomplete="off" placeholder="Batch number" required />
+      <button type="submit">Start voting</button>
+    </form>
+
     <div id="optWrap" class="opt-grid"></div>
+
+    <div id="confirmBar" class="confirm-bar hidden">
+      <span id="selectedText" class="muted"></span>
+      <button id="confirmVote" type="button">Confirm submit</button>
+    </div>
 
     <div class="status-wrap">
       <p id="status" class="muted"></p>

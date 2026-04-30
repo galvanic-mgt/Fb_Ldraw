@@ -127,6 +127,26 @@
   <h3>後台抽獎</h3>
 
    <div class="stage-controls">
+    <div class="bar" style="gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center">
+      <label>Draw mode
+        <select id="stageDrawMode">
+          <option value="main">Main lucky draw</option>
+          <option value="reward">Extra reward round</option>
+        </select>
+      </label>
+      <span id="stageRewardControls" class="bar" style="gap:8px;flex-wrap:wrap;align-items:center;display:none">
+        <button id="stageEnsureSecondPrize" class="btn primary" type="button">Create / Load Second Prize</button>
+        <label>Round <select id="stageRewardRoundSelect"></select></label>
+        <label>Prize <select id="stageRewardPrizeSelect"></select></label>
+        <input id="stageRewardRoundName" placeholder="New round name" style="min-width:150px">
+        <button id="stageAddRewardRound" class="btn" type="button">+ Round</button>
+        <input id="stageRewardPrizeName" placeholder="Reward prize name" style="min-width:150px">
+        <input id="stageRewardPrizeNo" placeholder="No." style="width:80px">
+        <label>Quota <input id="stageRewardPrizeQuota" type="number" min="1" value="1" style="width:70px"></label>
+        <button id="stageAddRewardPrize" class="btn" type="button">+ Prize</button>
+      </span>
+      <span id="stageRewardStatus" class="muted" style="font-size:13px"></span>
+    </div>
     <div id="drawBtns" class="btns">
       批次：
       <button class="btn small" data-batch="1">1</button>
@@ -218,7 +238,40 @@
    </thead>
    <tbody id="prizeRows"></tbody>
  </table>
-<h4>得獎名單</h4><ul id="winnersList"></ul></section>
+<h4>得獎名單</h4><ul id="winnersList"></ul>
+<div id="rewardRoundPanel" class="card" style="margin-top:16px">
+  <h3>Extra Reward Rounds</h3>
+  <p class="muted" style="font-size:13px;margin-top:0">
+    First/main draw remains unchanged. Extra rounds start with Second Prize and write to each person's rewardRounds column.
+  </p>
+  <div class="bar" style="gap:8px;flex-wrap:wrap;margin-bottom:10px">
+    <button id="btnEnsureSecondPrize" class="btn primary" type="button">Create / Load Second Prize</button>
+    <input id="newRewardRoundName" placeholder="New round name" style="min-width:180px">
+    <button id="btnAddRewardRound" class="btn" type="button">+ Add round</button>
+  </div>
+  <div class="bar" style="gap:8px;flex-wrap:wrap;margin-bottom:10px">
+    <label>Round <select id="rewardRoundSelect"></select></label>
+    <label>Prize <select id="rewardPrizeSelect"></select></label>
+    <label><input id="rewardAllowMainWinners" type="checkbox" checked> Include first-round winners</label>
+    <label><input id="rewardAllowDuplicateWithinRound" type="checkbox"> Allow duplicate within this round</label>
+  </div>
+  <div class="bar" style="gap:8px;flex-wrap:wrap;margin-bottom:10px">
+    <input id="newRewardPrizeName" placeholder="Reward prize name" style="min-width:180px">
+    <input id="newRewardPrizeNo" placeholder="No." style="width:90px">
+    <label>Quota <input id="newRewardPrizeQuota" type="number" min="1" value="1" style="width:90px"></label>
+    <button id="btnAddRewardPrize" class="btn" type="button">+ Add prize to round</button>
+    <label>Draw <input id="rewardBatchSize" type="number" min="1" max="10" value="1" style="width:70px"></label>
+    <button id="btnDrawRewardRound" class="btn primary" type="button">Draw extra round</button>
+  </div>
+  <div id="rewardRoundStatus" class="muted" style="min-height:20px"></div>
+  <div style="overflow:auto;margin-top:10px">
+    <table class="fullwidth">
+      <thead><tr><th>Round</th><th>No.</th><th>Prize</th><th>Quota</th><th>Used</th><th>Winners</th></tr></thead>
+      <tbody id="rewardRoundRows"></tbody>
+    </table>
+  </div>
+</div>
+</section>
 <section class="card subpage" id="pageQuestions" style="display:none"><h3>抽問</h3><div class="bar"><input id="newQuestion" placeholder="新增投票…"/><button id="btnAddQuestion" class="btn">+ 新增</button></div><ol id="questionList"></ol></section>
 <section class="card subpage" id="pagePoll" style="display:none">
   <h3>投票</h3><div class="grid-2">
@@ -371,6 +424,8 @@
   import { startApp } from './src/boot.js';
   startApp();
 </script>
+
+<script type="module" src="./src/reward_rounds_cms_bind.js?v=20260430"></script>
 
 <script type="module">
   import { getCurrentEventId } from './src/core_firebase.js';

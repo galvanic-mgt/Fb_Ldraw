@@ -53,3 +53,15 @@ export async function incrementVote(eid, pid, optionId) {
   await FB.put(`/events/${eid}/polls/${pid}/votes/${optionId}`, next);
   return next;
 }
+
+export async function submitBoundVote(eid, pid, voterKey, optionId) {
+  if (!voterKey) throw new Error('Missing voter identity');
+  const existing = await FB.get(`/events/${eid}/polls/${pid}/voters/${voterKey}`);
+  if (existing) throw new Error('This batch number has already voted');
+  const next = await incrementVote(eid, pid, optionId);
+  await FB.put(`/events/${eid}/polls/${pid}/voters/${voterKey}`, {
+    optionId,
+    votedAt: Date.now()
+  });
+  return next;
+}

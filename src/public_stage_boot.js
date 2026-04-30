@@ -70,14 +70,37 @@ async function refreshCurrentPrize(eid) {
   if (!eid) return;
 
   try {
-    const [prizes, curId] = await Promise.all([
+    const [prizes, curId, stageState, rewardRounds] = await Promise.all([
       FB.get(`/events/${eid}/prizes`).catch(() => []),
-      FB.get(`/events/${eid}/currentPrizeId`).catch(() => null)
+      FB.get(`/events/${eid}/currentPrizeId`).catch(() => null),
+      FB.get(`/events/${eid}/ui/stageState`).catch(() => null),
+      FB.get(`/events/${eid}/ui/rewardRounds`).catch(() => ({}))
     ]);
 
-    const prize   = (prizes || []).find(p => p && p.id === curId) || null;
     const nameEl  = document.getElementById('stagePrizeName');
     const leftEl  = document.getElementById('stagePrizeLeft');
+
+    if (stageState && stageState.mode === 'reward') {
+      const round = rewardRounds?.[stageState.currentRoundId] || {};
+      const prize = (round.prizes || []).find(p => p && p.id === stageState.currentPrizeId) || null;
+      if (nameEl) {
+        const roundName = stageState.currentRoundName || round.name || 'Reward Round';
+        const prizeName = stageState.currentPrizeName || prize?.name || '';
+        nameEl.textContent = prizeName ? `${roundName} - ${prizeName}` : roundName;
+      }
+      if (leftEl) {
+        if (prize) {
+          const quota = Number(prize.quota || 0);
+          const taken = Array.isArray(prize.winners) ? prize.winners.length : 0;
+          leftEl.textContent = Math.max(0, quota - taken);
+        } else {
+          leftEl.textContent = '—';
+        }
+      }
+      return;
+    }
+
+    const prize   = (prizes || []).find(p => p && p.id === curId) || null;
 
     if (nameEl) {
       nameEl.textContent = prize ? (prize.name || '—') : '—';

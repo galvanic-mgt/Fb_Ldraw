@@ -7,15 +7,181 @@ import {
   performDraw, rerollOne, clearScreenResults, exportCurrentWinners, drawState, undoLastDraw,
   renderBatchGrid as renderBatchGridCore,
   renderRerollLog as renderRerollLogCore,
-  fitWinnerCardText
+  fitWinnerCardText,
+  countdown321,
+  fireConfettiAtCards
 } from './stage_draw_logic.js';
 import { bindStageGridDelegation } from './stage_draw_logic.js';
 import { FB } from './fb.js';
+import {
+  getRewardRounds,
+  getRewardRoundState,
+  ensureSecondPrizeRound,
+  addRewardRound,
+  addRewardRoundPrize,
+  setCurrentRewardSelection,
+  drawRewardRoundPrize
+} from './reward_rounds_firebase.js';
 
 // remove: cellHTML(), renderBatchGrid(), renderRerollLog()
 
 
 function el(id){ return document.getElementById(id); }
+
+function rewardStatus(text, isError = false){
+  const node = document.getElementById('stageRewardStatus');
+  if (!node) return;
+  node.textContent = text || '';
+  node.style.color = isError ? '#ff5a67' : '';
+}
+
+function isRewardDrawMode(){
+  return document.getElementById('stageDrawMode')?.value === 'reward';
+}
+
+async function renderStageRewardControls(){
+  const eid = getCurrentEventId();
+  const roundSelect = document.getElementById('stageRewardRoundSelect');
+  const prizeSelect = document.getElementById('stageRewardPrizeSelect');
+  if (!eid || !roundSelect || !prizeSelect) return;
+
+  const [rounds, state] = await Promise.all([
+    getRewardRounds(eid),
+    getRewardRoundState(eid)
+  ]);
+  const entries = Object.entries(rounds || {}).map(([id, r]) => ({ id, ...(r || {}) }));
+  const prevRound = roundSelect.value || state.currentRoundId || '';
+
+  roundSelect.innerHTML = entries.length
+    ? entries.map(r => `<option value="${r.id}">${r.name || r.id}</option>`).join('')
+    : '<option value="">No extra rounds yet</option>';
+  if (entries.some(r => r.id === prevRound)) roundSelect.value = prevRound;
+  else if (state.currentRoundId && entries.some(r => r.id === state.currentRoundId)) roundSelect.value = state.currentRoundId;
+
+  const selectedRound = entries.find(r => r.id === roundSelect.value);
+  const prizes = Array.isArray(selectedRound?.prizes) ? selectedRound.prizes : [];
+  const prevPrize = prizeSelect.value || state.currentPrizeId || '';
+  prizeSelect.innerHTML = prizes.length
+    ? prizes.map(p => `<option value="${p.id}">${p.no ? p.no + ' - ' : ''}${p.name || p.id}</option>`).join('')
+    : '<option value="">No prizes in this round</option>';
+  if (prizes.some(p => p.id === prevPrize)) prizeSelect.value = prevPrize;
+  else if (state.currentPrizeId && prizes.some(p => p.id === state.currentPrizeId)) prizeSelect.value = state.currentPrizeId;
+
+  await setCurrentRewardSelection(roundSelect.value || null, prizeSelect.value || null).catch(()=>{});
+}
+
+async function refreshRewardHUD(){
+  const eid = getCurrentEventId();
+  const roundId = document.getElementById('stageRewardRoundSelect')?.value || '';
+  const prizeId = document.getElementById('stageRewardPrizeSelect')?.value || '';
+  const prizeNameEl = document.getElementById('stagePrizeName');
+  const prizeLeftEl = document.getElementById('stagePrizeLeft');
+  if (!eid || !roundId || !prizeId) {
+    if (prizeNameEl) prizeNameEl.textContent = '—';
+    if (prizeLeftEl) prizeLeftEl.textContent = '—';
+    return;
+  }
+  const rounds = await getRewardRounds(eid).catch(()=>({}));
+  const round = rounds?.[roundId] || {};
+  const prize = (round.prizes || []).find(p => p.id === prizeId);
+  if (prizeNameEl) prizeNameEl.textContent = prize ? `${round.name || 'Reward'} - ${prize.name || ''}` : '—';
+  if (prizeLeftEl) {
+    const left = prize ? Math.max(0, Number(prize.quota || 0) - ((prize.winners || []).length)) : 0;
+    prizeLeftEl.textContent = prize ? left : '—';
+  }
+}
+
+function bindStageRewardControls(){
+  const mode = document.getElementById('stageDrawMode');
+  const controls = document.getElementById('stageRewardControls');
+  if (mode && !mode.dataset.bound) {
+    mode.dataset.bound = '1';
+    mode.addEventListener('change', async ()=>{
+      if (controls) controls.style.display = isRewardDrawMode() ? 'inline-flex' : 'none';
+      if (isRewardDrawMode()) {
+        await renderStageRewardControls();
+        await refreshRewardHUD();
+        rewardStatus('Extra reward draw mode is active.');
+      } else {
+        rewardStatus('');
+      }
+    });
+  }
+  if (controls) controls.style.display = isRewardDrawMode() ? 'inline-flex' : 'none';
+
+  const bind = (id, fn) => {
+    const node = document.getElementById(id);
+    if (!node || node.dataset.bound) return;
+    node.dataset.bound = '1';
+    node.addEventListener('click', fn);
+  };
+
+  bind('stageEnsureSecondPrize', async ()=>{
+    try{
+      await ensureSecondPrizeRound(getCurrentEventId());
+      rewardStatus('Second Prize round is ready.');
+      await renderStageRewardControls();
+      await refreshRewardHUD();
+    }catch(e){
+      rewardStatus(e?.message || 'Could not create Second Prize.', true);
+    }
+  });
+  bind('stageAddRewardRound', async ()=>{
+    try{
+      const input = document.getElementById('stageRewardRoundName');
+      let name = input?.value.trim();
+      if (!name) {
+        const rounds = await getRewardRounds(getCurrentEventId());
+        const count = Object.keys(rounds || {}).length + 1;
+        name = count === 1 ? 'Second Prize' : `Reward Round ${count}`;
+      }
+      await addRewardRound(name);
+      if (input) input.value = '';
+      rewardStatus(`Reward round added: ${name}`);
+      await renderStageRewardControls();
+    }catch(e){
+      rewardStatus(e?.message || 'Could not add reward round.', true);
+    }
+  });
+  bind('stageAddRewardPrize', async ()=>{
+    try{
+      const roundId = document.getElementById('stageRewardRoundSelect')?.value || '';
+      const nameEl = document.getElementById('stageRewardPrizeName');
+      const noEl = document.getElementById('stageRewardPrizeNo');
+      const quotaEl = document.getElementById('stageRewardPrizeQuota');
+      const name = nameEl?.value.trim();
+      if (!roundId) return rewardStatus('Create or select a reward round first.', true);
+      if (!name) return rewardStatus('Enter a reward prize name first.', true);
+      await addRewardRoundPrize(roundId, {
+        name,
+        no: noEl?.value.trim() || '',
+        quota: Math.max(1, Number(quotaEl?.value || 1))
+      });
+      if (nameEl) nameEl.value = '';
+      if (noEl) noEl.value = '';
+      if (quotaEl) quotaEl.value = '1';
+      rewardStatus(`Reward prize added: ${name}`);
+      await renderStageRewardControls();
+      await refreshRewardHUD();
+    }catch(e){
+      rewardStatus(e?.message || 'Could not add reward prize.', true);
+    }
+  });
+
+  ['stageRewardRoundSelect','stageRewardPrizeSelect'].forEach(id => {
+    const node = document.getElementById(id);
+    if (!node || node.dataset.changeBound) return;
+    node.dataset.changeBound = '1';
+    node.addEventListener('change', async ()=>{
+      await setCurrentRewardSelection(
+        document.getElementById('stageRewardRoundSelect')?.value || null,
+        document.getElementById('stageRewardPrizeSelect')?.value || null
+      );
+      await renderStageRewardControls();
+      await refreshRewardHUD();
+    });
+  });
+}
 
 // Grid cell HTML for a winner
 function cellHTML(w, idx, mode){
@@ -67,6 +233,10 @@ async function renderRerollLog(){
 export async function renderStageDraw(mode){
   const eid = getCurrentEventId();
   if(!eid) return;
+  bindStageRewardControls();
+  if (isRewardDrawMode()) {
+    await renderStageRewardControls();
+  }
 
   const logoEl      = document.getElementById('stageLogo');
   const bannerEl    = document.getElementById('stageBanner');
@@ -80,6 +250,10 @@ export async function renderStageDraw(mode){
 
   const refreshCurrentPrizeHUD = async ()=>{
     try{
+      if (isRewardDrawMode()) {
+        await refreshRewardHUD();
+        return;
+      }
       const [prizesLatest, curIdLatest] = await Promise.all([
         getPrizes(eid),
         getCurrentPrizeIdRemote(eid)
@@ -129,8 +303,12 @@ export async function renderStageDraw(mode){
     ? Math.max(0, cur.quota - cur.winners.length) : 0;
 
   // HUD updates — these are the elements you actually have
-  if (prizeNameEl) prizeNameEl.textContent = giftName;
-  if (prizeLeftEl) prizeLeftEl.textContent = left;
+  if (isRewardDrawMode()) {
+    await refreshRewardHUD();
+  } else {
+    if (prizeNameEl) prizeNameEl.textContent = giftName;
+    if (prizeLeftEl) prizeLeftEl.textContent = left;
+  }
 
   // Logo/Banner are DIVs — set background or fallback text
   if (logoEl) {
@@ -153,6 +331,18 @@ export async function renderStageDraw(mode){
 
   // Totals updater
   const updateTotals = async () => {
+    if (isRewardDrawMode()) {
+      const rounds = await getRewardRounds(eid).catch(()=>({}));
+      const roundId = document.getElementById('stageRewardRoundSelect')?.value || '';
+      const prizeId = document.getElementById('stageRewardPrizeSelect')?.value || '';
+      const round = rounds?.[roundId] || {};
+      const prize = (round.prizes || []).find(p => p.id === prizeId);
+      const used = prize ? ((prize.winners || []).length) : 0;
+      const leftReward = prize ? Math.max(0, Number(prize.quota || 0) - used) : 0;
+      if (totalLeftEl) totalLeftEl.textContent = leftReward;
+      if (totalWonEl) totalWonEl.textContent = used;
+      return;
+    }
     const [peopleAll, prizesLatest] = await Promise.all([
       getPeople(eid),
       getPrizes(eid)
@@ -194,12 +384,45 @@ if (clearBtn) {
 
 if (exportBtn) exportBtn.onclick = ()=> exportCurrentWinners();
 
+  const doRewardDraw = async (skipCountdown=false)=>{
+    const active = document.querySelector('#drawBtns [data-batch].active');
+    const n = active ? Number(active.getAttribute('data-batch')) : 1;
+    const roundId = document.getElementById('stageRewardRoundSelect')?.value || '';
+    const prizeId = document.getElementById('stageRewardPrizeSelect')?.value || '';
+    if (!roundId || !prizeId) {
+      rewardStatus('Select an extra round and prize first.', true);
+      return;
+    }
+    hideCountdown();
+    if (!skipCountdown) {
+      showCountdown();
+      await countdown321(overlayEl);
+    }
+    const res = await drawRewardRoundPrize(n, { skipCountdown });
+    drawState.lastBatch = res.batch || [];
+    renderBatchGridCore(gridEl, drawState.lastBatch, mode);
+    if (mode !== 'public') {
+      fitWinnerCardText(gridEl, { nameMax: 140, deptMax: 70 });
+    }
+    const cards = gridEl?.querySelectorAll('.winner-card');
+    if (cards && cards.length) fireConfettiAtCards(cards);
+    hideCountdown();
+    rewardStatus(`Extra round draw complete: ${(res.batch || []).map(p=>p.name).join(', ')}`);
+    await renderStageRewardControls();
+    await refreshRewardHUD();
+    await updateTotals();
+  };
+
   // Roll using active batch size
   const rollBtn = document.getElementById('btnRollMain');
   const rollInstantBtn = document.getElementById('btnRollInstant');
   const undoBtn = document.getElementById('btnUndoDraw');
   if (rollBtn) {
     rollBtn.onclick = async ()=>{
+  if (isRewardDrawMode()) {
+    await doRewardDraw(false);
+    return;
+  }
   const active = document.querySelector('#drawBtns [data-batch].active');
   const n = active ? Number(active.getAttribute('data-batch')) : 1;
 
@@ -236,6 +459,10 @@ if (exportBtn) exportBtn.onclick = ()=> exportCurrentWinners();
   // Instant roll (skip countdown, keep confetti)
   if (rollInstantBtn) {
     rollInstantBtn.onclick = async ()=>{
+      if (isRewardDrawMode()) {
+        await doRewardDraw(true);
+        return;
+      }
       const active = document.querySelector('#drawBtns [data-batch].active');
       const n = active ? Number(active.getAttribute('data-batch')) : 1;
 

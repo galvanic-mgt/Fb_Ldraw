@@ -2,6 +2,7 @@ import { listEvents, createEvent, setCurrentEventId, getCurrentEventId, getEvent
          getPeople, setPeople, getPrizes, setPrizes, getCurrentPrizeIdRemote, setCurrentPrizeIdRemote,
          getQuestions, setQuestions, getAssets, setAssets, getPolls, setPoll, upsertEventMeta } from './core_firebase.js';
 import { addPrize, removePrize, setCurrentPrize, handlePrizeImportCSV, clearAllPrizes, updatePrize } from './stage_prizes_firebase.js';
+import { getRewardRounds, getRewardRoundState, ensureSecondPrizeRound, addRewardRound, addRewardRoundPrize, setCurrentRewardSelection, drawRewardRoundPrize, updateRewardRound } from './reward_rounds_firebase.js';
 import { handleImportCSV, exportCSV } from './roster_firebase.js';
 import { renderStageDraw } from './stage_draw_ui.js';
 import { FB } from './fb.js';
@@ -726,6 +727,14 @@ async function exportAttendanceLog(eid){
   return rows.join('\n');
 }
 
+function rewardText(p){
+  const main = p?.prize ? `🎁 ${p.prize}` : '';
+  const extra = Object.entries(p?.rewardRounds || {})
+    .map(([round, prize]) => `${round}: ${prize}`)
+    .join('<br>');
+  return [main, extra].filter(Boolean).join('<br>');
+}
+
 async function renderRoster(){
   const eid = getCurrentEventId(); if(!eid) return;
 
@@ -746,7 +755,8 @@ async function renderRoster(){
   // filter
   const q = (document.getElementById('searchGuest')?.value || '').toLowerCase();
   let list = people.filter(p=>{
-    const hay = [p.name,p.dept,p.phone,p.code,p.table,p.seat,p.prize].map(x=>(x||'').toLowerCase()).join(' ');
+    const extraRewards = Object.values(p.rewardRounds || {}).join(' ');
+    const hay = [p.name,p.dept,p.phone,p.code,p.table,p.seat,p.prize,extraRewards].map(x=>(x||'').toLowerCase()).join(' ');
     return hay.includes(q);
   });
 
@@ -801,7 +811,7 @@ function renderRow(tr, p, idx, mode){
       <td><input class="in code"  value="${p.code||''}"></td>
       <td><input class="in table" value="${p.table||''}"></td>
       <td><input class="in seat"  value="${p.seat||''}"></td>
-      <td>${p.prize ? '🎁 '+p.prize : ''}</td>
+      <td>${rewardText(p)}</td>
       <td>
         <button class="btn small save">儲存</button>
         <button class="btn small cancel">取消</button>
@@ -844,7 +854,7 @@ function renderRow(tr, p, idx, mode){
       <td>${p.code || ''}</td>
       <td>${p.table || ''}</td>
       <td>${p.seat || ''}</td>
-      <td>${p.prize ? '🎁 '+p.prize : ''}</td>
+      <td>${rewardText(p)}</td>
       <td>
         <button class="btn small edit">編輯</button>
         ${p.prize ? '<button class="btn small" data-clear-win>清除得獎</button>' : ''}
@@ -1107,6 +1117,122 @@ async function renderPrizes(){
         li.textContent=`${w.name}（${p.name}）`;
         wins.appendChild(li);}));
   }
+}
+
+function ensureRewardRoundPanel(){
+  if (document.getElementById('rewardRoundPanel')) return;
+  const page = document.getElementById('pagePrizes');
+  if (!page) return;
+  const panel = document.createElement('div');
+  panel.id = 'rewardRoundPanel';
+  panel.className = 'card';
+  panel.style.marginTop = '16px';
+  panel.innerHTML = `
+    <h3>Extra Reward Rounds</h3>
+    <p class="muted" style="font-size:13px;margin-top:0">
+      First/main draw remains unchanged. Extra rounds start with Second Prize and write to each person's rewardRounds column.
+    </p>
+    <div class="bar" style="gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      <button id="btnEnsureSecondPrize" class="btn primary" type="button">Create / Load Second Prize</button>
+      <input id="newRewardRoundName" placeholder="New round name" style="min-width:180px">
+      <button id="btnAddRewardRound" class="btn" type="button">+ Add round</button>
+    </div>
+    <div class="bar" style="gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      <label>Round <select id="rewardRoundSelect"></select></label>
+      <label>Prize <select id="rewardPrizeSelect"></select></label>
+      <label><input id="rewardAllowMainWinners" type="checkbox" checked> Include first-round winners</label>
+      <label><input id="rewardAllowDuplicateWithinRound" type="checkbox"> Allow duplicate within this round</label>
+    </div>
+    <div class="bar" style="gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      <input id="newRewardPrizeName" placeholder="Reward prize name" style="min-width:180px">
+      <input id="newRewardPrizeNo" placeholder="No." style="width:90px">
+      <label>Quota <input id="newRewardPrizeQuota" type="number" min="1" value="1" style="width:90px"></label>
+      <button id="btnAddRewardPrize" class="btn" type="button">+ Add prize to round</button>
+      <label>Draw <input id="rewardBatchSize" type="number" min="1" max="10" value="1" style="width:70px"></label>
+      <button id="btnDrawRewardRound" class="btn primary" type="button">Draw extra round</button>
+    </div>
+    <div id="rewardRoundStatus" class="muted" style="min-height:20px"></div>
+    <div style="overflow:auto;margin-top:10px">
+      <table class="fullwidth">
+        <thead><tr><th>Round</th><th>No.</th><th>Prize</th><th>Quota</th><th>Used</th><th>Winners</th></tr></thead>
+        <tbody id="rewardRoundRows"></tbody>
+      </table>
+    </div>
+  `;
+  page.appendChild(panel);
+}
+
+function setRewardStatus(text, isError){
+  const el = document.getElementById('rewardRoundStatus');
+  if (!el) return;
+  el.textContent = text || '';
+  el.style.color = isError ? '#ff5a67' : '';
+}
+
+async function renderRewardRounds(){
+  ensureRewardRoundPanel();
+  const eid = getCurrentEventId(); if(!eid) return;
+  const [rounds, state] = await Promise.all([getRewardRounds(eid), getRewardRoundState(eid)]);
+  const entries = Object.entries(rounds || {}).map(([id, r]) => ({ id, ...(r || {}) }));
+  const roundSelect = document.getElementById('rewardRoundSelect');
+  const prizeSelect = document.getElementById('rewardPrizeSelect');
+  const rows = document.getElementById('rewardRoundRows');
+  if (!roundSelect || !prizeSelect || !rows) return;
+
+  roundSelect.innerHTML = '';
+  if (!entries.length) {
+    roundSelect.innerHTML = '<option value="">No extra rounds yet</option>';
+  } else {
+    entries.forEach(round => {
+      const opt = document.createElement('option');
+      opt.value = round.id;
+      opt.textContent = round.name || round.id;
+      if (round.id === state.currentRoundId) opt.selected = true;
+      roundSelect.appendChild(opt);
+    });
+    if (!roundSelect.value) roundSelect.value = entries[0].id;
+  }
+
+  const selectedRound = entries.find(r => r.id === roundSelect.value);
+  if (document.getElementById('rewardAllowMainWinners')) {
+    document.getElementById('rewardAllowMainWinners').checked = selectedRound?.allowMainRoundWinners !== false;
+  }
+  if (document.getElementById('rewardAllowDuplicateWithinRound')) {
+    document.getElementById('rewardAllowDuplicateWithinRound').checked = selectedRound?.allowDuplicateWithinRound === true;
+  }
+
+  prizeSelect.innerHTML = '';
+  const prizes = Array.isArray(selectedRound?.prizes) ? selectedRound.prizes : [];
+  if (!prizes.length) {
+    prizeSelect.innerHTML = '<option value="">No prizes in this round</option>';
+  } else {
+    prizes.forEach(prize => {
+      const opt = document.createElement('option');
+      opt.value = prize.id;
+      opt.textContent = prize.no ? `${prize.no} - ${prize.name}` : prize.name;
+      if (prize.id === state.currentPrizeId) opt.selected = true;
+      prizeSelect.appendChild(opt);
+    });
+    if (!prizeSelect.value) prizeSelect.value = prizes[0].id;
+  }
+
+  rows.innerHTML = entries.length ? entries.flatMap(round => {
+    const roundPrizes = Array.isArray(round.prizes) ? round.prizes : [];
+    if (!roundPrizes.length) {
+      return [`<tr><td>${round.name || round.id}</td><td colspan="5" class="muted">No prizes yet</td></tr>`];
+    }
+    return roundPrizes.map(prize => {
+      const winners = Array.isArray(prize.winners) ? prize.winners : [];
+      return `<tr>
+        <td>${round.name || round.id}</td>
+        <td>${prize.no || ''}</td>
+        <td>${prize.name || ''}</td>
+        <td>${prize.quota || 0}</td>
+        <td>${winners.length}</td>
+        <td>${winners.map(w => w.name || '').filter(Boolean).join(', ')}</td>
+      </tr>`;
+    });
+  }).join('') : '<tr><td colspan="6" class="muted">No extra reward rounds yet.</td></tr>';
 }
 
 document.getElementById('addPrize')?.addEventListener('click', async ()=>{
@@ -1650,6 +1776,114 @@ function bindPollComposer(){
 
 
 function bindPrizeActions(){
+  ensureRewardRoundPanel();
+
+  document.getElementById('btnEnsureSecondPrize')?.addEventListener('click', async ()=>{
+    const eid = getCurrentEventId(); if(!eid) return;
+    try {
+      await ensureSecondPrizeRound(eid);
+      setRewardStatus('Second Prize round is ready.');
+      await renderRewardRounds();
+    } catch (e) {
+      console.error('[reward rounds] ensure second prize failed', e);
+      setRewardStatus(e?.message || 'Could not create Second Prize round.', true);
+    }
+  });
+
+  document.getElementById('btnAddRewardRound')?.addEventListener('click', async ()=>{
+    const nameEl = document.getElementById('newRewardRoundName');
+    let name = nameEl?.value.trim();
+    try {
+      if (!name) {
+        const eid = getCurrentEventId();
+        const rounds = await getRewardRounds(eid);
+        const count = Object.keys(rounds || {}).length + 1;
+        name = count === 1 ? 'Second Prize' : `Reward Round ${count}`;
+      }
+      await addRewardRound(name);
+      if (nameEl) nameEl.value = '';
+      setRewardStatus(`Reward round added: ${name}`);
+      await renderRewardRounds();
+    } catch (e) {
+      console.error('[reward rounds] add round failed', e);
+      setRewardStatus(e?.message || 'Could not add reward round.', true);
+    }
+  });
+
+  document.getElementById('rewardRoundSelect')?.addEventListener('change', async (ev)=>{
+    const roundId = ev.target.value;
+    await setCurrentRewardSelection(roundId, null);
+    await renderRewardRounds();
+  });
+
+  document.getElementById('rewardPrizeSelect')?.addEventListener('change', async (ev)=>{
+    const roundId = document.getElementById('rewardRoundSelect')?.value || '';
+    await setCurrentRewardSelection(roundId, ev.target.value);
+    await renderRewardRounds();
+  });
+
+  document.getElementById('rewardAllowMainWinners')?.addEventListener('change', async (ev)=>{
+    const roundId = document.getElementById('rewardRoundSelect')?.value || '';
+    if (!roundId) return;
+    await updateRewardRound(roundId, { allowMainRoundWinners: ev.target.checked });
+    await renderRewardRounds();
+  });
+
+  document.getElementById('rewardAllowDuplicateWithinRound')?.addEventListener('change', async (ev)=>{
+    const roundId = document.getElementById('rewardRoundSelect')?.value || '';
+    if (!roundId) return;
+    await updateRewardRound(roundId, { allowDuplicateWithinRound: ev.target.checked });
+    await renderRewardRounds();
+  });
+
+  document.getElementById('btnAddRewardPrize')?.addEventListener('click', async ()=>{
+    let roundId = document.getElementById('rewardRoundSelect')?.value || '';
+    const name = document.getElementById('newRewardPrizeName')?.value.trim();
+    const no = document.getElementById('newRewardPrizeNo')?.value.trim();
+    const quota = Math.max(1, Number(document.getElementById('newRewardPrizeQuota')?.value || 1));
+    if (!name) {
+      setRewardStatus('Enter a reward prize name first.', true);
+      return;
+    }
+    try {
+      if (!roundId) {
+        const round = await ensureSecondPrizeRound(getCurrentEventId());
+        roundId = round.id;
+        await renderRewardRounds();
+        const select = document.getElementById('rewardRoundSelect');
+        if (select) select.value = roundId;
+      }
+      await addRewardRoundPrize(roundId, { name, no, quota });
+      document.getElementById('newRewardPrizeName').value = '';
+      document.getElementById('newRewardPrizeNo').value = '';
+      document.getElementById('newRewardPrizeQuota').value = '1';
+      setRewardStatus('Reward prize added.');
+      await renderRewardRounds();
+    } catch (e) {
+      console.error('[reward rounds] add prize failed', e);
+      setRewardStatus(e?.message || 'Could not add reward prize.', true);
+    }
+  });
+
+  document.getElementById('btnDrawRewardRound')?.addEventListener('click', async ()=>{
+    const roundId = document.getElementById('rewardRoundSelect')?.value || '';
+    const prizeId = document.getElementById('rewardPrizeSelect')?.value || '';
+    const batchSize = Number(document.getElementById('rewardBatchSize')?.value || 1);
+    if (!roundId || !prizeId) return;
+    try {
+      await setCurrentRewardSelection(roundId, prizeId);
+      const res = await drawRewardRoundPrize(batchSize);
+      const names = (res.batch || []).map(p => p.name).filter(Boolean).join(', ');
+      setRewardStatus(`Draw complete: ${names || 'no winners'}`);
+      await renderRewardRounds();
+      await renderRoster();
+    } catch (e) {
+      console.error('[reward rounds] draw failed', e);
+      alert(`[Reward Round Error]\n${e?.message || String(e)}`);
+      setRewardStatus(e?.message || 'Could not draw reward round.', true);
+    }
+  });
+
   // 新增獎品
   document.getElementById('addPrize')?.addEventListener('click', async ()=>{
     const nameEl = document.getElementById('newPrizeName');
@@ -1700,6 +1934,7 @@ function bindPrizeActions(){
       renderPrizes();
     });
   });
+  renderRewardRounds();
 }
 
 export async function renderPollManager() {
@@ -1831,6 +2066,7 @@ export async function renderAll(){
   await renderEventInfo();
   await renderRoster();
   await renderPrizes();
+  await renderRewardRounds();
   await renderQuestions();
   await renderAssets();
   await renderPolls();

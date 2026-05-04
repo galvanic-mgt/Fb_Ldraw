@@ -133,9 +133,9 @@ function columns() {
     ["出席\nAttending", "attending"],
     ["交通方式\nTransport", "transportLabel"],
     ["去程時間\nGo time", "goTime"],
-    ["上車地點\nPickup location", "pickupLocation"],
+    ["上車地點\nPickup location", "pickupLocationLabel"],
     ["回程時間\nReturn time", "returnTime"],
-    ["回程地點\nReturn location", "returnLocation"],
+    ["回程地點\nReturn location", "returnLocationLabel"],
     ["餐飲\nMeal", "mealLabel"],
     ["備註\nRemarks", "remarks"],
     ["台號\nTable", "finalArrangement.table"],
@@ -153,6 +153,42 @@ function getPathValue(row, path) {
   return path.split(".").reduce((acc, key) => (acc && acc[key] !== undefined ? acc[key] : ""), row);
 }
 
+function displayValue(row, key) {
+  if (key === "attending") {
+    return row.attending === false || row.attending === "no"
+      ? "不出席 Not attending"
+      : row.attending === true || row.attending === "yes"
+        ? "出席 Attend"
+        : "";
+  }
+  if (key === "pickupLocationLabel") {
+    return row.pickupLocationLabel || row.pickupLocation || "";
+  }
+  if (key === "returnLocationLabel") {
+    return row.returnLocationLabel || row.returnLocation || "";
+  }
+  if (key === "updatedAt") {
+    const value = getPathValue(row, key);
+    if (!value) return "";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return new Intl.DateTimeFormat("en-HK", {
+      timeZone: "Asia/Hong_Kong",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false
+    }).format(date);
+  }
+  const value = getPathValue(row, key);
+  if (value === false) return "No";
+  if (value === true) return "Yes";
+  return value ?? "";
+}
+
 function renderRows(rows) {
   const table = $("applicationTable");
   const thead = table.querySelector("thead");
@@ -160,7 +196,7 @@ function renderRows(rows) {
   const cols = columns();
   thead.innerHTML = `<tr>${cols.map(([label]) => `<th style="text-align:left;border-bottom:1px solid #ddd;padding:8px;white-space:pre-line">${label}</th>`).join("")}</tr>`;
   tbody.innerHTML = rows.length
-    ? rows.map(row => `<tr>${cols.map(([, key]) => `<td style="border-bottom:1px solid #eee;padding:8px">${getPathValue(row, key) || ""}</td>`).join("")}</tr>`).join("")
+    ? rows.map(row => `<tr>${cols.map(([, key]) => `<td style="border-bottom:1px solid #eee;padding:8px">${displayValue(row, key)}</td>`).join("")}</tr>`).join("")
     : `<tr><td colspan="${cols.length}" style="padding:12px;white-space:pre-line">${TEXT.noApplications}</td></tr>`;
 }
 
@@ -214,7 +250,7 @@ function exportCsv() {
   const cols = columns();
   const csv = "\ufeff" + [
     cols.map(([label]) => csvEscape(label)).join(","),
-    ...currentRows.map(row => cols.map(([, key]) => csvEscape(getPathValue(row, key))).join(","))
+    ...currentRows.map(row => cols.map(([, key]) => csvEscape(displayValue(row, key))).join(","))
   ].join("\r\n");
   const eventId = $("eventIdInput").value.trim() || "event";
   const a = document.createElement("a");

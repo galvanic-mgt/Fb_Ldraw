@@ -9,8 +9,8 @@ let currentApplication = null;
 const TEXT = {
   defaultTitle: "活動前登記\nPre-event Application",
   guest: "嘉賓\nGuest",
-  checkingBatch: "正在核對正片號...\nChecking batch number...",
-  batchNotFound: "找不到此正片號，請檢查後再試。\nBatch number not found. Please check and try again.",
+  checkingBatch: "正在核對員工證編號...\nChecking staff ID...",
+  batchNotFound: "找不到此員工證編號，請檢查後再試。\nStaff ID not found. Please check and try again.",
   loadingError: "未能載入活動資料，請稍後再試。\nCould not load this event. Please try again later.",
   lockedNotice: "報名截止日期已過，選擇已鎖定；特殊更改請由指定活動人員人工處理。\nApplication deadline has passed. Choices are locked; special changes must be handled manually by the event team.",
   editUntil: "你可於以下時間前更改選擇：\nYou may edit choices until:",
@@ -26,8 +26,9 @@ const TEXT = {
   attending: "出席\nAttending",
   notAttending: "不出席\nNot attending",
   transport: "交通方式\nTransport",
-  pickupTime: "上車時間\nPickup time",
-  pickupPoint: "上車地點\nPickup point",
+  pickupTime: "出發時間\nDeparture time",
+  pickupPoint: "出發地點\nPickup point",
+  returnPoint: "回程地點\nReturn point",
   returnTime: "回程時間\nReturn time",
   meal: "餐飲\nMeal",
   tableSeat: "台號 座位\nTable Seat",
@@ -112,6 +113,20 @@ function optionLabel(list, value) {
   return found ? found.label : value || "";
 }
 
+function optionItem(list, value) {
+  return (Array.isArray(list) ? list : []).find(item => item.value === value) || null;
+}
+
+function normaliseTransportValue(value) {
+  const aliases = {
+    coach: "shuttle_bus",
+    bus: "shuttle_bus",
+    flight: "airport_express",
+    mtr: "self_arrangement"
+  };
+  return aliases[value] || value || "self_arrangement";
+}
+
 function fillSelect(id, items) {
   const el = $(id);
   if (!el) return;
@@ -122,6 +137,20 @@ function fillSelect(id, items) {
     opt.textContent = item.label || item.value || "";
     el.appendChild(opt);
   });
+}
+
+function setCollapsed(el, collapsed) {
+  if (!el) return;
+  el.classList.toggle("is-collapsed", Boolean(collapsed));
+  el.setAttribute("aria-hidden", collapsed ? "true" : "false");
+}
+
+function syncShuttleTimes() {
+  const pickup = optionItem(PRE_EVENT_CONFIG.pickupLocationOptions, $("pickupLocation")?.value);
+  const returnPoint = optionItem(PRE_EVENT_CONFIG.returnLocationOptions, $("returnLocation")?.value);
+  const returnTime = returnPoint?.time || PRE_EVENT_CONFIG.fixedReturnTime || $("returnTime")?.value || "23:00";
+  if ($("goTime")) $("goTime").value = pickup?.time || "";
+  if ($("returnTime")) $("returnTime").value = returnTime;
 }
 
 function setMessage(id, text, isError) {
@@ -227,27 +256,47 @@ function applyApplicationToForm(app) {
   const attending = app.attending === false || app.attending === "no" ? "no" : "yes";
   const radio = document.querySelector(`input[name="attending"][value="${attending}"]`);
   if (radio) radio.checked = true;
-  $("transport").value = app.transport || "coach";
+  $("transport").value = normaliseTransportValue(app.transport);
   $("goTime").value = app.goTime || "";
   $("pickupLocation").value = app.pickupLocation || "";
   $("returnTime").value = app.returnTime || "";
   $("returnLocation").value = app.returnLocation || "";
   $("meal").value = app.meal || "non_vegetarian";
   $("remarks").value = app.remarks || "";
+  syncShuttleTimes();
   updateChoiceVisibility();
 }
 
 function updateChoiceVisibility() {
   const attending = document.querySelector('input[name="attending"]:checked')?.value !== "no";
-  $("choiceFields").hidden = !attending;
+  const shuttleSelected = $("transport")?.value === "shuttle_bus";
+  syncShuttleTimes();
+  setCollapsed($("choiceFields"), !attending);
+  setCollapsed($("shuttleFields"), !attending || !shuttleSelected);
   ["transport", "meal"].forEach(id => {
     const el = $(id);
     if (el) el.required = attending;
   });
+  ["pickupLocation", "returnLocation"].forEach(id => {
+    const el = $(id);
+    if (el) el.required = attending && shuttleSelected;
+  });
+  ["goTime", "returnTime"].forEach(id => {
+    const el = $(id);
+    if (el) el.required = false;
+  });
+  if (!attending) {
+    $("submitButton")?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
 }
 
 function buildApplicationPayload() {
   const attending = document.querySelector('input[name="attending"]:checked')?.value !== "no";
+  const transport = attending ? $("transport").value : "";
+  const shuttleSelected = transport === "shuttle_bus";
+  syncShuttleTimes();
+  const pickup = optionItem(PRE_EVENT_CONFIG.pickupLocationOptions, $("pickupLocation")?.value);
+  const returnTime = PRE_EVENT_CONFIG.fixedReturnTime || $("returnTime")?.value || "";
   return {
     eventId: currentEventId,
     personIndex: currentGuestIndex,
@@ -256,12 +305,15 @@ function buildApplicationPayload() {
     name: currentGuest?.name || "",
     dept: currentGuest?.dept || "",
     attending,
-    transport: attending ? $("transport").value : "",
-    transportLabel: attending ? optionLabel(PRE_EVENT_CONFIG.transportOptions, $("transport").value) : "",
-    goTime: attending ? $("goTime").value : "",
-    pickupLocation: attending ? $("pickupLocation").value : "",
-    returnTime: attending ? $("returnTime").value : "",
-    returnLocation: attending ? $("returnLocation").value : "",
+    attendanceLabel: attending ? TEXT.attending.replace("\n", " ") : TEXT.notAttending.replace("\n", " "),
+    transport,
+    transportLabel: attending ? optionLabel(PRE_EVENT_CONFIG.transportOptions, transport) : "",
+    goTime: shuttleSelected ? pickup?.time || $("goTime").value : "",
+    pickupLocation: shuttleSelected ? $("pickupLocation").value : "",
+    pickupLocationLabel: shuttleSelected ? optionLabel(PRE_EVENT_CONFIG.pickupLocationOptions, $("pickupLocation").value) : "",
+    returnTime: shuttleSelected ? returnTime : "",
+    returnLocation: shuttleSelected ? $("returnLocation").value : "",
+    returnLocationLabel: shuttleSelected ? optionLabel(PRE_EVENT_CONFIG.returnLocationOptions, $("returnLocation").value) : "",
     meal: attending ? $("meal").value : "",
     mealLabel: attending ? optionLabel(PRE_EVENT_CONFIG.mealOptions, $("meal").value) : "",
     remarks: $("remarks").value.trim(),
@@ -279,7 +331,7 @@ function renderDetails(app, guest, canReveal) {
 
   if (!canReveal) {
     panel.hidden = false;
-    grid.innerHTML = `<div><strong>${TEXT.finalArrangement.replace("\n", "<br>")}</strong>${TEXT.revealSoon.replace("\n", "<br>")}</div>`;
+    grid.innerHTML = `<div>${TEXT.revealSoon.replace("\n", "<br>")}</div>`;
     return;
   }
 
@@ -290,7 +342,8 @@ function renderDetails(app, guest, canReveal) {
     [TEXT.attendance, app.attending === false ? TEXT.notAttending : TEXT.attending],
     [TEXT.transport, final.transportLabel || app.transportLabel || app.transport || ""],
     [TEXT.pickupTime, final.pickupTime || final.goTime || app.goTime || ""],
-    [TEXT.pickupPoint, final.pickupLocation || app.pickupLocation || ""],
+    [TEXT.pickupPoint, final.pickupLocation || app.pickupLocationLabel || app.pickupLocation || ""],
+    [TEXT.returnPoint, final.returnLocation || app.returnLocationLabel || app.returnLocation || ""],
     [TEXT.returnTime, final.returnTime || app.returnTime || ""],
     [TEXT.meal, final.mealLabel || app.mealLabel || app.meal || ""],
     [TEXT.tableSeat, [final.table || guest.table, final.seat || guest.seat].filter(Boolean).join("  ")],
@@ -395,6 +448,9 @@ function bind() {
   document.querySelectorAll('input[name="attending"]').forEach(input => {
     input.addEventListener("change", updateChoiceVisibility);
   });
+  $("transport").addEventListener("change", updateChoiceVisibility);
+  $("pickupLocation").addEventListener("change", syncShuttleTimes);
+  $("returnLocation").addEventListener("change", syncShuttleTimes);
 
   const logoutButton = $("logoutButton");
   if (logoutButton) {
@@ -410,6 +466,7 @@ async function boot() {
   fillSelect("returnTime", PRE_EVENT_CONFIG.returnTimeOptions);
   fillSelect("returnLocation", PRE_EVENT_CONFIG.returnLocationOptions);
   fillSelect("meal", PRE_EVENT_CONFIG.mealOptions);
+  syncShuttleTimes();
   bind();
 
   if (!currentEventId) {

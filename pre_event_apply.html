@@ -18,10 +18,10 @@
 
     <section id="loginPanel" class="pe-panel">
       <h2>登入<br><span class="pe-en">Login</span></h2>
-      <p class="pe-muted">請輸入正片號以查看或更改你的選擇。<br>Enter your batch number to review or update your choices.</p>
+      <p class="pe-muted">請輸入員工證編號以查看或更改你的選擇。<br>Enter your staff ID to review or update your choices.</p>
       <form id="loginForm" class="pe-form">
         <label class="pe-field">
-          <span>正片號<br><span class="pe-en">Batch number</span></span>
+          <span>員工證編號<br><span class="pe-en">Staff ID</span></span>
           <input id="batchInput" autocomplete="off" required />
         </label>
         <button class="pe-primary" type="submit">繼續<br><span class="pe-en">Continue</span></button>
@@ -47,31 +47,33 @@
           <label><input type="radio" name="attending" value="no" required /> 不出席<br><span class="pe-en">Not attending</span></label>
         </fieldset>
 
-        <div id="choiceFields" class="pe-grid">
-          <label class="pe-field">
-            <span>交通方式<br><span class="pe-en">Transport</span></span>
-            <select id="transport" required></select>
-          </label>
-          <label class="pe-field">
-            <span>去程時間<br><span class="pe-en">Departure time</span></span>
-            <select id="goTime"></select>
-          </label>
-          <label class="pe-field">
-            <span>上車地點<br><span class="pe-en">Pickup point</span></span>
-            <select id="pickupLocation"></select>
-          </label>
-          <label class="pe-field">
-            <span>回程時間<br><span class="pe-en">Return time</span></span>
-            <select id="returnTime"></select>
-          </label>
-          <label class="pe-field">
-            <span>回程地點<br><span class="pe-en">Return point</span></span>
-            <select id="returnLocation"></select>
-          </label>
-          <label class="pe-field">
-            <span>餐飲偏好<br><span class="pe-en">Meal preference</span></span>
-            <select id="meal" required></select>
-          </label>
+        <div id="choiceFields" class="pe-flow pe-collapsible">
+          <section id="transportStep" class="pe-step">
+            <label class="pe-field">
+              <span>交通方式<br><span class="pe-en">Transport</span></span>
+              <select id="transport" required></select>
+            </label>
+          </section>
+
+          <section id="shuttleFields" class="pe-step pe-shuttle pe-collapsible is-collapsed" aria-hidden="true">
+            <label class="pe-field">
+              <span>出發地點及時間<br><span class="pe-en">Pickup point and departure time</span></span>
+              <select id="pickupLocation"></select>
+            </label>
+            <label class="pe-field">
+              <span>回程地點及時間<br><span class="pe-en">Return point and return time</span></span>
+              <select id="returnLocation"></select>
+            </label>
+            <select id="goTime" class="pe-visually-hidden" tabindex="-1" aria-hidden="true"></select>
+            <select id="returnTime" class="pe-visually-hidden" tabindex="-1" aria-hidden="true"></select>
+          </section>
+
+          <section id="mealStep" class="pe-step">
+            <label class="pe-field">
+              <span>餐飲偏好<br><span class="pe-en">Meal preference</span></span>
+              <select id="meal" required></select>
+            </label>
+          </section>
         </div>
 
         <label class="pe-field">

@@ -1305,6 +1305,108 @@ body:not(.is-public) #cmsStage16x9 .stage-main #stageGrid .winner-card .dept {
   line-height: 1.1;
 }
 
+/* CMS: keep the two columns as independent scroll panes below the header. */
+body:not(.public-mode):not(.tablet-mode) {
+  overflow: hidden;
+}
+
+body:not(.public-mode):not(.tablet-mode) #cmsView {
+  height: calc(100dvh - var(--headerH, 76px));
+  overflow: hidden;
+}
+
+body:not(.public-mode):not(.tablet-mode) .cms-grid {
+  height: 100%;
+  min-height: 0;
+}
+
+body:not(.public-mode):not(.tablet-mode) .sidebar,
+body:not(.public-mode):not(.tablet-mode) .cms-main {
+  min-height: 0;
+  max-height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+body:not(.public-mode):not(.tablet-mode) .sidebar {
+  position: static;
+  height: 100%;
+}
+
+body:not(.public-mode):not(.tablet-mode) .cms-main {
+  height: 100%;
+  padding-right: 6px;
+}
+
+body:not(.public-mode):not(.tablet-mode) .sidebar,
+body:not(.public-mode):not(.tablet-mode) .cms-main {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,.22) transparent;
+}
+
+body:not(.public-mode):not(.tablet-mode) .sidebar::-webkit-scrollbar,
+body:not(.public-mode):not(.tablet-mode) .cms-main::-webkit-scrollbar {
+  width: 8px;
+}
+
+body:not(.public-mode):not(.tablet-mode) .sidebar::-webkit-scrollbar-track,
+body:not(.public-mode):not(.tablet-mode) .cms-main::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+body:not(.public-mode):not(.tablet-mode) .sidebar::-webkit-scrollbar-thumb,
+body:not(.public-mode):not(.tablet-mode) .cms-main::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,.16);
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+}
+
+body:not(.public-mode):not(.tablet-mode) .sidebar:hover::-webkit-scrollbar-thumb,
+body:not(.public-mode):not(.tablet-mode) .cms-main:hover::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,.3);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+body.theme-light:not(.public-mode):not(.tablet-mode) .sidebar,
+body.theme-light:not(.public-mode):not(.tablet-mode) .cms-main {
+  scrollbar-color: rgba(15,26,47,.22) transparent;
+}
+
+body.theme-light:not(.public-mode):not(.tablet-mode) .sidebar::-webkit-scrollbar-thumb,
+body.theme-light:not(.public-mode):not(.tablet-mode) .cms-main::-webkit-scrollbar-thumb {
+  background: rgba(15,26,47,.14);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+body.theme-light:not(.public-mode):not(.tablet-mode) .sidebar:hover::-webkit-scrollbar-thumb,
+body.theme-light:not(.public-mode):not(.tablet-mode) .cms-main:hover::-webkit-scrollbar-thumb {
+  background: rgba(15,26,47,.28);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+@media (max-width: 760px) {
+  body:not(.public-mode):not(.tablet-mode) {
+    overflow: auto;
+  }
+
+  body:not(.public-mode):not(.tablet-mode) #cmsView {
+    height: auto;
+    overflow: visible;
+  }
+
+  body:not(.public-mode):not(.tablet-mode) .sidebar,
+  body:not(.public-mode):not(.tablet-mode) .cms-main {
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+}
+
 /* PUBLIC: scale text fluidly by winner count for better legibility */
 .is-public #stageGrid.winners-1 .winner-card .name { font-size: clamp(40px, 10vmin, 180px) !important; }
 .is-public #stageGrid.winners-1 .winner-card .dept { font-size: clamp(20px, 6vmin, 96px) !important; }
